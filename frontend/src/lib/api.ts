@@ -1,4 +1,4 @@
-import { DocumentChunk, DocumentIndexStatus, DocumentRecord, Project, ProjectDetail } from "@/lib/types";
+import { DocumentChunk, DocumentIndexStatus, DocumentRecord, Project, ProjectDetail, SearchResponse } from "@/lib/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -55,6 +55,20 @@ export const api = {
   reindexDocument: (documentId: string) =>
     request<DocumentIndexStatus>(`/documents/${documentId}/reindex`, {
       method: "POST"
+    }),
+  search: (payload: {
+    query: string;
+    project_id: string;
+    top_k?: number;
+    document_ids?: string[];
+    mime_types?: string[];
+  }) =>
+    request<SearchResponse>("/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
     }),
   listDocumentChunks: (documentId: string, params?: { offset?: number; limit?: number }) => {
     const search = new URLSearchParams();

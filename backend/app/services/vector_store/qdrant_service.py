@@ -49,3 +49,37 @@ class QdrantIndexService:
         if not points:
             return
         self.client.upsert(collection_name=self.collection_name, points=points, wait=True)
+
+    def search_chunks(
+        self,
+        query_vector: list[float],
+        limit: int,
+        project_id: UUID,
+        document_ids: list[UUID] | None = None,
+        mime_types: list[str] | None = None,
+    ) -> list[models.ScoredPoint]:
+        conditions: list[models.FieldCondition] = [
+            models.FieldCondition(key="project_id", match=models.MatchValue(value=str(project_id)))
+        ]
+
+        if document_ids:
+            conditions.append(
+                models.FieldCondition(
+                    key="document_id",
+                    match=models.MatchAny(any=[str(document_id) for document_id in document_ids]),
+                )
+            )
+
+        if mime_types:
+            conditions.append(models.FieldCondition(key="mime_type", match=models.MatchAny(any=mime_types)))
+
+        query_filter = models.Filter(must=conditions)
+
+        return self.client.search(
+            collection_name=self.collection_name,
+            query_vector=query_vector,
+            query_filter=query_filter,
+            limit=limit,
+            with_payload=True,
+            with_vectors=False,
+        )

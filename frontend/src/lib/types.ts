@@ -50,6 +50,25 @@ export interface DocumentChunk {
   created_at: string;
 }
 
+export interface SearchResult {
+  chunk_id: string;
+  document_id: string;
+  source_filename: string;
+  chunk_index: number;
+  content: string;
+  score: number;
+  char_start: number;
+  char_end: number;
+  mime_type: string;
+}
+
+export interface SearchResponse {
+  query: string;
+  top_k: number;
+  total_results: number;
+  results: SearchResult[];
+}
+
 export interface ProjectDetail extends Project {
   documents: DocumentRecord[];
 }

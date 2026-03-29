@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 
 import { DocumentsTable } from "@/components/documents-table";
 import { ApiError, api } from "@/lib/api";
-import { DocumentRecord, ProjectDetail } from "@/lib/types";
+import { DocumentRecord, ProjectDetail, SearchResult } from "@/lib/types";
 
 function hasInFlightDocuments(documents: DocumentRecord[]): boolean {
   return documents.some(
@@ -22,6 +22,12 @@ export default function ProjectDetailsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeIndexDocumentId, setActiveIndexDocumentId] = useState<string | null>(null);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
 
   const documents = project?.documents || [];
@@ -113,6 +119,29 @@ export default function ProjectDetailsPage() {
     }
   };
 
+  const handleSearch = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!projectId || !searchQuery.trim()) {
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      setSearchError(null);
+      const response = await api.search({
+        query: searchQuery.trim(),
+        project_id: projectId,
+        top_k: 8
+      });
+      setSearchResults(response.results);
+    } catch (err) {
+      setSearchError(err instanceof ApiError ? err.message : "Search request failed");
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   return (
     <main className="page">
       <section className="card page-header">
@@ -165,6 +194,43 @@ export default function ProjectDetailsPage() {
             onReindexDocument={handleReindexDocument}
           />
         )}
+      </section>
+
+      <section className="card search-panel">
+        <h2>Retrieval v1 Debug Search</h2>
+        <p className="subtle">Vector search only. This is not chat and does not generate answers.</p>
+
+        <form className="search-form" onSubmit={handleSearch}>
+          <input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search indexed chunks in this project"
+          />
+          <button type="submit" className="button-primary" disabled={isSearching || !searchQuery.trim()}>
+            {isSearching ? "Searching..." : "Search"}
+          </button>
+        </form>
+
+        {searchError ? <p className="error-banner">{searchError}</p> : null}
+
+        <div className="search-results">
+          {!isSearching && searchResults.length === 0 ? (
+            <p className="subtle">No search results yet. Index documents and run a query.</p>
+          ) : null}
+
+          {searchResults.map((result) => (
+            <article key={result.chunk_id} className="search-result-card">
+              <div className="search-result-head">
+                <strong>{result.source_filename}</strong>
+                <span className="subtle">score {result.score.toFixed(4)}</span>
+              </div>
+              <p className="subtle">
+                chunk #{result.chunk_index} | chars {result.char_start}-{result.char_end} | {result.mime_type}
+              </p>
+              <p className="search-content">{result.content}</p>
+            </article>
+          ))}
+        </div>
       </section>
     </main>
   );

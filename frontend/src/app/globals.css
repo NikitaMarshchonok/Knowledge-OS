@@ -202,6 +202,42 @@ textarea {
   gap: 8px;
 }
 
+.search-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.search-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.search-result-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(10, 14, 30, 0.5);
+}
+
+.search-result-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.search-content {
+  margin-top: 8px;
+  white-space: pre-wrap;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
