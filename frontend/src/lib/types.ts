@@ -1,4 +1,4 @@
-export type DocumentStatus = "uploaded" | "processing" | "indexed" | "failed";
+export type DocumentStatus = "uploaded" | "processing" | "processed" | "indexed" | "failed";
 
 export interface Project {
   id: string;
@@ -18,8 +18,36 @@ export interface DocumentRecord {
   size_bytes: number;
   storage_path: string;
   status: DocumentStatus;
+  processing_error: string | null;
+  processed_at: string | null;
+  chunk_count: number;
+  extracted_text_path: string | null;
+  page_count: number | null;
+  is_indexing: boolean;
+  indexing_error: string | null;
+  indexed_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface DocumentIndexStatus {
+  id: string;
+  status: DocumentStatus;
+  is_indexing: boolean;
+  indexing_error: string | null;
+  indexed_at: string | null;
+  chunk_count: number;
+}
+
+export interface DocumentChunk {
+  id: string;
+  document_id: string;
+  chunk_index: number;
+  content: string;
+  char_start: number;
+  char_end: number;
+  token_estimate: number;
+  created_at: string;
 }
 
 export interface ProjectDetail extends Project {

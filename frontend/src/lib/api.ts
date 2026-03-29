@@ -1,4 +1,4 @@
-import { DocumentRecord, Project, ProjectDetail } from "@/lib/types";
+import { DocumentChunk, DocumentIndexStatus, DocumentRecord, Project, ProjectDetail } from "@/lib/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -46,6 +46,27 @@ export const api = {
     }),
   getProject: (projectId: string) => request<ProjectDetail>(`/projects/${projectId}`),
   listDocuments: (projectId: string) => request<DocumentRecord[]>(`/projects/${projectId}/documents`),
+  getDocument: (documentId: string) => request<DocumentRecord>(`/documents/${documentId}`),
+  getDocumentIndexStatus: (documentId: string) => request<DocumentIndexStatus>(`/documents/${documentId}/index-status`),
+  indexDocument: (documentId: string) =>
+    request<DocumentIndexStatus>(`/documents/${documentId}/index`, {
+      method: "POST"
+    }),
+  reindexDocument: (documentId: string) =>
+    request<DocumentIndexStatus>(`/documents/${documentId}/reindex`, {
+      method: "POST"
+    }),
+  listDocumentChunks: (documentId: string, params?: { offset?: number; limit?: number }) => {
+    const search = new URLSearchParams();
+    if (params?.offset !== undefined) {
+      search.set("offset", String(params.offset));
+    }
+    if (params?.limit !== undefined) {
+      search.set("limit", String(params.limit));
+    }
+    const query = search.toString();
+    return request<DocumentChunk[]>(`/documents/${documentId}/chunks${query ? `?${query}` : ""}`);
+  },
   uploadDocument: async (projectId: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);

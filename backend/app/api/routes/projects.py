@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import get_settings
@@ -9,6 +9,7 @@ from app.models import Document, DocumentStatus, Project, Workspace
 from app.schemas.document import DocumentRead
 from app.schemas.project import ProjectCreate, ProjectDetail, ProjectRead
 from app.services.bootstrap import get_or_create_default_workspace
+from app.services.document_processing import process_document_task
 from app.services.storage import save_upload_file
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -52,7 +53,12 @@ def get_project(project_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/{project_id}/documents/upload", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)
-def upload_document(project_id: UUID, file: UploadFile = File(...), db: Session = Depends(get_db)):
+def upload_document(
+    project_id: UUID,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
     project = db.query(Project).filter(Project.id == project_id).first()
     if project is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
@@ -67,10 +73,13 @@ def upload_document(project_id: UUID, file: UploadFile = File(...), db: Session 
         size_bytes=size_bytes,
         storage_path=storage_path,
         status=DocumentStatus.uploaded,
+        chunk_count=0,
     )
     db.add(document)
     db.commit()
     db.refresh(document)
+
+    background_tasks.add_task(process_document_task, document.id)
 
     return document
 

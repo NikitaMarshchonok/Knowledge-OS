@@ -8,3 +8,5 @@ pydantic-settings
 pypdf
 python-docx
 openpyxl
+qdrant-client
+fastembed

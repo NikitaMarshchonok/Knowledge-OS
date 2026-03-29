@@ -11,25 +11,52 @@ This repository is a production-style monorepo foundation for a B2B AI knowledge
 Implemented:
 
 - Projects and document management foundation
-- File upload pipeline (local storage)
+- Local file upload + asynchronous document processing
+- Chunk persistence in PostgreSQL
+- Manual embedding + vector indexing pipeline into Qdrant
 - Clean API contracts and frontend API client
-- Project list/detail UI with upload flow and document status table
+- Project detail UI with processing/indexing status polling and index/reindex actions
 
 Not implemented intentionally:
 
 - Chat
-- Embeddings
-- Indexing pipelines
-- Retrieval orchestration
+- Retrieval APIs
+- Reranking
+- Answer generation
 
-## Monorepo structure
+## Document lifecycle
 
-- `backend/app`: FastAPI application modules
-- `backend/alembic`: DB migrations
-- `frontend/src`: Next.js app code
-- `docker-compose.yml`: local infrastructure stack
+Current status lifecycle:
+
+- `uploaded` -> file persisted and processing scheduled
+- `processing` -> parser + chunking pipeline running
+- `processed` -> text extracted and chunks stored in PostgreSQL
+- `indexed` -> chunk vectors upserted into Qdrant
+- `failed` -> processing failure persisted in `processing_error`
+
+### What “processed” means
+
+A document is `processed` when text extraction and chunk storage completed successfully.
+
+### What “indexed” means
+
+A document is `indexed` when embeddings are generated for all stored chunks and upserted into Qdrant.
+
+## Supported file types
+
+Parser support currently includes:
+
+- `.txt`
+- `.pdf`
+- `.docx`
+- `.csv`
+- `.xlsx`
+
+Unsupported types fail safely with `status=failed` and a persisted `processing_error`.
 
 ## Backend API routes
+
+Projects and uploads:
 
 - `GET /health`
 - `GET /projects`
@@ -37,6 +64,74 @@ Not implemented intentionally:
 - `GET /projects/{id}`
 - `POST /projects/{id}/documents/upload`
 - `GET /projects/{id}/documents`
+
+Document visibility:
+
+- `GET /documents/{id}`
+- `GET /documents/{id}/chunks?offset=0&limit=100`
+
+Indexing endpoints:
+
+- `POST /documents/{id}/index`
+- `POST /documents/{id}/reindex`
+- `GET /documents/{id}/index-status`
+
+## Indexing pipeline design
+
+Service structure:
+
+- `app/services/embeddings/` -> provider abstraction + default provider
+- `app/services/vector_store/` -> Qdrant index service
+- `app/services/document_indexing.py` -> orchestration
+
+Indexing flow:
+
+1. Validate document state (`processed`/`indexed`) and chunk availability
+2. Mark `is_indexing=true`
+3. Load chunks in deterministic order (`chunk_index`)
+4. Generate embeddings through provider abstraction
+5. Ensure Qdrant collection exists (size checked against configured dimension)
+6. Delete existing vectors for the document (reindex-safe)
+7. Upsert vectors with citation-friendly payload metadata
+8. Set `status=indexed`, `indexed_at`, clear indexing errors
+9. On failure, clear `is_indexing` and persist `indexing_error`
+
+Qdrant payload per chunk includes:
+
+- `chunk_id`
+- `document_id`
+- `project_id`
+- `chunk_index`
+- `source_filename`
+- `char_start`
+- `char_end`
+- `mime_type`
+
+## Configuration
+
+Important backend env vars:
+
+- `QDRANT_URL`
+- `QDRANT_COLLECTION_NAME`
+- `EMBEDDING_PROVIDER`
+- `EMBEDDING_MODEL_NAME`
+- `EMBEDDING_DIMENSION`
+- `EMBEDDING_BATCH_SIZE`
+- `DEFAULT_CHUNK_SIZE`
+- `DEFAULT_CHUNK_OVERLAP`
+
+## Dependencies
+
+Processing dependencies:
+
+- `pypdf`
+- `python-docx`
+- `openpyxl`
+
+Indexing dependencies:
+
+- `qdrant-client`
+- `fastembed`
 
 ## Local run (Docker Compose - recommended)
 
@@ -88,13 +183,12 @@ npm run dev
 
 ## Database and migrations
 
-- SQLAlchemy models are in `backend/app/models`
-- Initial migration is `backend/alembic/versions/0001_initial.py`
-- On container start, backend runs `alembic upgrade head` automatically
+- `backend/alembic/versions/0001_initial.py`
+- `backend/alembic/versions/0002_document_processing_pipeline.py`
+- `backend/alembic/versions/0003_document_indexing_metadata.py`
 
 ## Notes for next milestones
 
-- Add auth and workspace membership model
-- Add async document processing worker
-- Add embeddings + vector indexing (Qdrant)
-- Add citation-aware retrieval and chat APIs
+- Add durable worker queue for processing/indexing jobs
+- Add retrieval APIs using Qdrant filters
+- Add citation-aware answer generation APIs

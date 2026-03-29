@@ -93,6 +93,11 @@ p {
   color: var(--text);
 }
 
+.button-small {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
 .project-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -176,6 +181,13 @@ textarea {
   gap: 12px;
 }
 
+.inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .upload-input input {
   border: 1px dashed var(--border);
   padding: 14px;
@@ -183,6 +195,11 @@ textarea {
 
 .table-wrap {
   overflow-x: auto;
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
 }
 
 table {
@@ -221,9 +238,20 @@ td {
   color: #60dfad;
 }
 
+.status-processed {
+  background: rgba(120, 241, 195, 0.2);
+  color: #78f1c3;
+}
+
 .status-failed {
   background: rgba(255, 123, 123, 0.16);
   color: #ff7b7b;
+}
+
+.error-inline {
+  color: #ff9e9e;
+  display: block;
+  margin-top: 4px;
 }
 
 .back-link {

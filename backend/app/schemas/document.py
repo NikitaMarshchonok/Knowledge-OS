@@ -15,12 +15,29 @@ class DocumentRead(BaseModel):
     size_bytes: int
     storage_path: str
     status: DocumentStatus
+
     processing_error: str | None
     processed_at: datetime | None
     chunk_count: int
     extracted_text_path: str | None
     page_count: int | None
+
+    is_indexing: bool
+    indexing_error: str | None
+    indexed_at: datetime | None
+
     created_at: datetime
     updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentIndexStatusRead(BaseModel):
+    id: UUID
+    status: DocumentStatus
+    is_indexing: bool
+    indexing_error: str | None
+    indexed_at: datetime | None
+    chunk_count: int
 
     model_config = ConfigDict(from_attributes=True)
