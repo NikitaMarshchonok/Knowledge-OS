@@ -24,4 +24,4 @@ class ProjectRead(BaseModel):
 
 
 class ProjectDetail(ProjectRead):
-    documents: list[DocumentRead] = []
+    documents: list[DocumentRead] = Field(default_factory=list)

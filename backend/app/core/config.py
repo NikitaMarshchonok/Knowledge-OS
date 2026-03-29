@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg2://knowledge:knowledge@localhost:5432/knowledge"
     storage_dir: str = "./storage"
     cors_origins: list[str] = ["http://localhost:3000"]
+    default_chunk_size: int = 1200
+    default_chunk_overlap: int = 200
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 

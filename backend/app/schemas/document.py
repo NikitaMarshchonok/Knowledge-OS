@@ -15,6 +15,11 @@ class DocumentRead(BaseModel):
     size_bytes: int
     storage_path: str
     status: DocumentStatus
+    processing_error: str | None
+    processed_at: datetime | None
+    chunk_count: int
+    extracted_text_path: str | None
+    page_count: int | None
     created_at: datetime
     updated_at: datetime
 
