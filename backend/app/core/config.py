@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     embedding_dimension: int = 384
     embedding_batch_size: int = 64
 
+    reranking_enabled: bool = True
+    rerank_top_n: int = 24
+    rerank_provider: str = "local_embedding"
+    rerank_model_name: str = "embedding-similarity-v1"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 
 

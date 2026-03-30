@@ -56,10 +56,17 @@ export interface SearchResult {
   source_filename: string;
   chunk_index: number;
   content: string;
-  score: number;
+  original_vector_score: number;
+  rerank_score: number | null;
+  final_rank: number;
   char_start: number;
   char_end: number;
   mime_type: string;
+}
+
+export interface SearchDebugInfo {
+  pre_rerank_chunk_ids: string[];
+  post_rerank_chunk_ids: string[];
 }
 
 export interface SearchResponse {
@@ -67,6 +74,7 @@ export interface SearchResponse {
   top_k: number;
   total_results: number;
   results: SearchResult[];
+  debug: SearchDebugInfo | null;
 }
 
 export interface ProjectDetail extends Project {

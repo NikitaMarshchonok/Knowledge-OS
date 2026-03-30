@@ -197,8 +197,8 @@ export default function ProjectDetailsPage() {
       </section>
 
       <section className="card search-panel">
-        <h2>Retrieval v1 Debug Search</h2>
-        <p className="subtle">Vector search only. This is not chat and does not generate answers.</p>
+        <h2>Retrieval + Reranking v1</h2>
+        <p className="subtle">Vector candidates are reranked before returning final top-k results.</p>
 
         <form className="search-form" onSubmit={handleSearch}>
           <input
@@ -222,8 +222,12 @@ export default function ProjectDetailsPage() {
             <article key={result.chunk_id} className="search-result-card">
               <div className="search-result-head">
                 <strong>{result.source_filename}</strong>
-                <span className="subtle">score {result.score.toFixed(4)}</span>
+                <span className="subtle">#{result.final_rank}</span>
               </div>
+              <p className="subtle">
+                vector {result.original_vector_score.toFixed(4)} | rerank{" "}
+                {result.rerank_score === null ? "n/a" : result.rerank_score.toFixed(4)}
+              </p>
               <p className="subtle">
                 chunk #{result.chunk_index} | chars {result.char_start}-{result.char_end} | {result.mime_type}
               </p>

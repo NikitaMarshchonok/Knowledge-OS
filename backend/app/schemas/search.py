@@ -9,6 +9,7 @@ class SearchRequest(BaseModel):
     top_k: int = Field(default=8, ge=1, le=50)
     document_ids: list[UUID] | None = None
     mime_types: list[str] | None = None
+    debug: bool = False
 
 
 class SearchResult(BaseModel):
@@ -17,10 +18,17 @@ class SearchResult(BaseModel):
     source_filename: str
     chunk_index: int
     content: str
-    score: float
+    original_vector_score: float
+    rerank_score: float | None = None
+    final_rank: int
     char_start: int
     char_end: int
     mime_type: str
+
+
+class SearchDebugInfo(BaseModel):
+    pre_rerank_chunk_ids: list[UUID]
+    post_rerank_chunk_ids: list[UUID]
 
 
 class SearchResponse(BaseModel):
@@ -28,3 +36,4 @@ class SearchResponse(BaseModel):
     top_k: int
     total_results: int
     results: list[SearchResult]
+    debug: SearchDebugInfo | None = None

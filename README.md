@@ -12,25 +12,16 @@ Implemented:
 
 - Document upload + parsing + chunking pipeline
 - Embedding + vector indexing into Qdrant
-- Retrieval v1 API with project-scoped filtered vector search
-- Retrieval debug UI on project details page
+- Retrieval + reranking v1 API (`POST /search`)
+- Retrieval debug UI on project details page with score diagnostics
 
 Not implemented intentionally:
 
 - Chat
 - LLM answer generation
-- Reranking
+- Citation rendering UI
 - Hybrid retrieval
-
-## Document lifecycle
-
-Current status lifecycle:
-
-- `uploaded` -> file persisted and processing scheduled
-- `processing` -> parser + chunking pipeline running
-- `processed` -> text extracted and chunks stored in PostgreSQL
-- `indexed` -> chunk vectors upserted into Qdrant
-- `failed` -> processing failure persisted in `processing_error`
+- Worker queue changes
 
 ## Backend API routes
 
@@ -51,67 +42,64 @@ Documents and indexing:
 - `POST /documents/{id}/reindex`
 - `GET /documents/{id}/index-status`
 
-Retrieval v1:
+Search (retrieval + reranking):
 
 - `POST /search`
+
+## `/search` contract
 
 Request body:
 
 ```json
 {
-  "query": "what does the pricing policy say",
+  "query": "what does the refund policy say",
   "project_id": "<uuid>",
   "top_k": 8,
   "document_ids": ["<uuid>"],
-  "mime_types": ["application/pdf"]
+  "mime_types": ["application/pdf"],
+  "debug": false
 }
 ```
 
-Response body:
+Response fields:
 
 - `query`
 - `top_k`
 - `total_results`
-- `results[]` where each item has:
+- `results[]`:
   - `chunk_id`
   - `document_id`
   - `source_filename`
   - `chunk_index`
   - `content`
-  - `score`
+  - `original_vector_score`
+  - `rerank_score`
+  - `final_rank`
   - `char_start`
   - `char_end`
   - `mime_type`
+- optional `debug`:
+  - `pre_rerank_chunk_ids`
+  - `post_rerank_chunk_ids`
 
-## Retrieval v1 architecture
+## Retrieval + reranking pipeline
 
-- `app/services/retrieval.py` orchestrates retrieval logic
-- Embeddings are generated through existing provider abstraction (`app/services/embeddings`)
-- Qdrant search uses extended vector store service (`app/services/vector_store/qdrant_service.py`)
-- API route remains thin in `app/api/routes/search.py`
+Pipeline order:
 
-Retrieval flow:
+1. Embed query
+2. Search Qdrant by vector similarity with required `project_id` filter
+3. Fetch top N candidates (`RERANK_TOP_N`, configurable)
+4. Enrich with PostgreSQL chunk/document data
+5. Rerank candidates when enabled
+6. Return final top K
 
-1. Validate request and project scope
-2. Embed query with the configured embedding provider
-3. Query Qdrant with metadata filters:
-   - required: `project_id`
-   - optional: `document_ids`, `mime_types`
-4. Enrich hits from PostgreSQL for stable content/source fields
-5. Return top-k results
+Service structure:
 
-## Qdrant payload metadata
-
-Each indexed chunk stores:
-
-- `chunk_id`
-- `document_id`
-- `project_id`
-- `chunk_index`
-- `source_filename`
-- `char_start`
-- `char_end`
-- `mime_type`
+- `app/services/search_pipeline.py`
+- `app/services/reranking/base.py`
+- `app/services/reranking/factory.py`
+- `app/services/reranking/local_reranker.py`
+- `app/services/vector_store/qdrant_service.py`
 
 ## Configuration
 
@@ -123,8 +111,12 @@ Important backend env vars:
 - `EMBEDDING_MODEL_NAME`
 - `EMBEDDING_DIMENSION`
 - `EMBEDDING_BATCH_SIZE`
-- `DEFAULT_CHUNK_SIZE`
-- `DEFAULT_CHUNK_OVERLAP`
+- `RERANKING_ENABLED`
+- `RERANK_TOP_N`
+- `RERANK_PROVIDER`
+- `RERANK_MODEL_NAME`
+
+Defaults use local embedding-similarity reranking provider.
 
 ## Dependencies
 
@@ -186,9 +178,3 @@ cd frontend
 npm install
 npm run dev
 ```
-
-## Database and migrations
-
-- `backend/alembic/versions/0001_initial.py`
-- `backend/alembic/versions/0002_document_processing_pipeline.py`
-- `backend/alembic/versions/0003_document_indexing_metadata.py`

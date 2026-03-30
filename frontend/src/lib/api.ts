@@ -62,6 +62,7 @@ export const api = {
     top_k?: number;
     document_ids?: string[];
     mime_types?: string[];
+    debug?: boolean;
   }) =>
     request<SearchResponse>("/search", {
       method: "POST",
