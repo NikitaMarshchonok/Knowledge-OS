@@ -6,7 +6,7 @@ import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 
 import { DocumentsTable } from "@/components/documents-table";
 import { ApiError, api } from "@/lib/api";
-import { DocumentRecord, ProjectDetail, SearchResult } from "@/lib/types";
+import { AskResponse, DocumentRecord, ProjectDetail, SearchResult } from "@/lib/types";
 
 function hasInFlightDocuments(documents: DocumentRecord[]): boolean {
   return documents.some(
@@ -27,6 +27,10 @@ export default function ProjectDetailsPage() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [askQuery, setAskQuery] = useState("");
+  const [askResponse, setAskResponse] = useState<AskResponse | null>(null);
+  const [isAsking, setIsAsking] = useState(false);
+  const [askError, setAskError] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -142,6 +146,29 @@ export default function ProjectDetailsPage() {
     }
   };
 
+  const handleAsk = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!projectId || !askQuery.trim()) {
+      return;
+    }
+
+    try {
+      setIsAsking(true);
+      setAskError(null);
+      const response = await api.ask({
+        query: askQuery.trim(),
+        project_id: projectId,
+        top_k: 6
+      });
+      setAskResponse(response);
+    } catch (err) {
+      setAskError(err instanceof ApiError ? err.message : "Ask request failed");
+      setAskResponse(null);
+    } finally {
+      setIsAsking(false);
+    }
+  };
+
   return (
     <main className="page">
       <section className="card page-header">
@@ -235,6 +262,54 @@ export default function ProjectDetailsPage() {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="card search-panel">
+        <h2>Ask (Grounded Answer v1)</h2>
+        <p className="subtle">Single-turn Q&A generated strictly from reranked retrieval context.</p>
+
+        <form className="search-form" onSubmit={handleAsk}>
+          <input
+            value={askQuery}
+            onChange={(event) => setAskQuery(event.target.value)}
+            placeholder="Ask a question about indexed project documents"
+          />
+          <button type="submit" className="button-primary" disabled={isAsking || !askQuery.trim()}>
+            {isAsking ? "Asking..." : "Ask"}
+          </button>
+        </form>
+
+        {askError ? <p className="error-banner">{askError}</p> : null}
+
+        {askResponse ? (
+          <div className="search-results">
+            <article className="search-result-card">
+              <div className="search-result-head">
+                <strong>Answer</strong>
+              </div>
+              <p className="search-content">{askResponse.answer}</p>
+            </article>
+
+            <article className="search-result-card">
+              <div className="search-result-head">
+                <strong>Citations ({askResponse.citations.length})</strong>
+              </div>
+              {askResponse.citations.length === 0 ? (
+                <p className="subtle">No citation references were emitted by the model for this answer.</p>
+              ) : (
+                askResponse.citations.map((citation) => (
+                  <div key={citation.chunk_id} style={{ marginBottom: "0.75rem" }}>
+                    <p className="subtle">
+                      {citation.source_filename} | chunk #{citation.chunk_index} | chars {citation.char_start}-
+                      {citation.char_end}
+                    </p>
+                    <p className="search-content">{citation.snippet}</p>
+                  </div>
+                ))
+              )}
+            </article>
+          </div>
+        ) : null}
       </section>
     </main>
   );

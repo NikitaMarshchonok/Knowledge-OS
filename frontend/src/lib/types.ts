@@ -77,6 +77,28 @@ export interface SearchResponse {
   debug: SearchDebugInfo | null;
 }
 
+export interface AskCitation {
+  chunk_id: string;
+  document_id: string;
+  source_filename: string;
+  chunk_index: number;
+  char_start: number;
+  char_end: number;
+  snippet: string;
+}
+
+export interface AskDebugInfo {
+  context_chunk_ids: string[];
+  llm_model: string;
+}
+
+export interface AskResponse {
+  answer: string;
+  citations: AskCitation[];
+  supporting_results: SearchResult[];
+  debug: AskDebugInfo | null;
+}
+
 export interface ProjectDetail extends Project {
   documents: DocumentRecord[];
 }

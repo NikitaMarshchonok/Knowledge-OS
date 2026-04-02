@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes.ask import router as ask_router
 from app.api.routes.documents import router as documents_router
 from app.api.routes.health import router as health_router
 from app.api.routes.projects import router as projects_router
@@ -31,3 +32,4 @@ app.include_router(health_router)
 app.include_router(projects_router)
 app.include_router(documents_router)
 app.include_router(search_router)
+app.include_router(ask_router)

@@ -1,4 +1,12 @@
-import { DocumentChunk, DocumentIndexStatus, DocumentRecord, Project, ProjectDetail, SearchResponse } from "@/lib/types";
+import {
+  AskResponse,
+  DocumentChunk,
+  DocumentIndexStatus,
+  DocumentRecord,
+  Project,
+  ProjectDetail,
+  SearchResponse
+} from "@/lib/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -65,6 +73,21 @@ export const api = {
     debug?: boolean;
   }) =>
     request<SearchResponse>("/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    }),
+  ask: (payload: {
+    query: string;
+    project_id: string;
+    top_k?: number;
+    document_ids?: string[];
+    mime_types?: string[];
+    debug?: boolean;
+  }) =>
+    request<AskResponse>("/ask", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

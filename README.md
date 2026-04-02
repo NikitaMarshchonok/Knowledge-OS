@@ -13,13 +13,13 @@ Implemented:
 - Document upload + parsing + chunking pipeline
 - Embedding + vector indexing into Qdrant
 - Retrieval + reranking v1 API (`POST /search`)
-- Retrieval debug UI on project details page with score diagnostics
+- Grounded answer generation v1 API with citations (`POST /ask`)
+- Retrieval + Ask debug UI on project details page
 
 Not implemented intentionally:
 
-- Chat
-- LLM answer generation
-- Citation rendering UI
+- Multi-turn chat
+- Agent workflows
 - Hybrid retrieval
 - Worker queue changes
 
@@ -45,6 +45,7 @@ Documents and indexing:
 Search (retrieval + reranking):
 
 - `POST /search`
+- `POST /ask`
 
 ## `/search` contract
 
@@ -82,6 +83,36 @@ Response fields:
   - `pre_rerank_chunk_ids`
   - `post_rerank_chunk_ids`
 
+## `/ask` contract
+
+Request body:
+
+```json
+{
+  "query": "what are termination conditions in the MSA",
+  "project_id": "<uuid>",
+  "top_k": 6,
+  "document_ids": ["<uuid>"],
+  "mime_types": ["application/pdf"]
+}
+```
+
+Response fields:
+
+- `answer`
+- `citations[]`:
+  - `chunk_id`
+  - `document_id`
+  - `source_filename`
+  - `chunk_index`
+  - `char_start`
+  - `char_end`
+  - `snippet`
+- `supporting_results[]` (retrieval records used for grounding)
+- optional `debug`:
+  - `context_chunk_ids`
+  - `llm_model`
+
 ## Retrieval + reranking pipeline
 
 Pipeline order:
@@ -101,6 +132,30 @@ Service structure:
 - `app/services/reranking/local_reranker.py`
 - `app/services/vector_store/qdrant_service.py`
 
+## Grounded answer generation pipeline
+
+Pipeline order:
+
+1. Receive question + project scope in `POST /ask`
+2. Reuse search pipeline (`SearchPipelineService`) to get reranked supporting chunks
+3. Build strict grounded prompt from those chunks
+4. Call pluggable LLM provider abstraction (`app/services/llm/*`)
+5. Return answer + citations + supporting retrieval results
+
+Service structure:
+
+- `app/services/answer_generation.py`
+- `app/services/llm/base.py`
+- `app/services/llm/factory.py`
+- `app/services/llm/openai_compatible.py`
+
+Grounding behavior:
+
+- Answer only from provided chunk context
+- Do not invent facts
+- If evidence is insufficient, say so
+- Emit inline citations (`[C#]`) that are resolved into `citations[]`
+
 ## Configuration
 
 Important backend env vars:
@@ -115,6 +170,13 @@ Important backend env vars:
 - `RERANK_TOP_N`
 - `RERANK_PROVIDER`
 - `RERANK_MODEL_NAME`
+- `LLM_PROVIDER`
+- `LLM_BASE_URL`
+- `LLM_API_KEY`
+- `LLM_MODEL_NAME`
+- `LLM_TEMPERATURE`
+- `LLM_MAX_TOKENS`
+- `LLM_TIMEOUT_SECONDS`
 
 Defaults use local embedding-similarity reranking provider.
 

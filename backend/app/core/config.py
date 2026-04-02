@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     rerank_top_n: int = 24
     rerank_provider: str = "local_embedding"
     rerank_model_name: str = "embedding-similarity-v1"
+    llm_provider: str = "openai_compatible"
+    llm_base_url: str = "https://api.openai.com/v1"
+    llm_api_key: str | None = None
+    llm_model_name: str = "gpt-4o-mini"
+    llm_temperature: float = 0.1
+    llm_max_tokens: int = 400
+    llm_timeout_seconds: int = 30
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 
