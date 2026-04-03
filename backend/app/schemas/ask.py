@@ -30,6 +30,7 @@ class AskDebugInfo(BaseModel):
 
 
 class AskResponse(BaseModel):
+    ask_run_id: UUID
     answer: str
     citations: list[Citation]
     supporting_results: list[SearchResult]

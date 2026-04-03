@@ -64,7 +64,7 @@ def upgrade() -> None:
         sa.Column("mime_type", sa.String(length=255), nullable=False),
         sa.Column("size_bytes", sa.BigInteger(), nullable=False),
         sa.Column("storage_path", sa.String(length=500), nullable=False),
-        sa.Column("status", sa.Enum("uploaded", "processing", "indexed", "failed", name="document_status"), nullable=False),
+        sa.Column("status", postgresql.ENUM("uploaded", "processing", "indexed", "failed", name="document_status", create_type=False), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.ForeignKeyConstraint(["project_id"], ["projects.id"]),

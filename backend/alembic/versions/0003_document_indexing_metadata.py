@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "0003_document_indexing_metadata"
-down_revision = "0002_document_processing_pipeline"
+down_revision = "0002_doc_processing"
 branch_labels = None
 depends_on = None
 

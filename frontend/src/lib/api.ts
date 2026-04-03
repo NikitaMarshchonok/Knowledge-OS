@@ -1,10 +1,13 @@
 import {
+  AskRun,
+  AskRunListResponse,
   AskResponse,
   DocumentChunk,
   DocumentIndexStatus,
   DocumentRecord,
   Project,
   ProjectDetail,
+  QAMetrics,
   SearchResponse
 } from "@/lib/types";
 
@@ -94,6 +97,39 @@ export const api = {
       },
       body: JSON.stringify(payload)
     }),
+  listAskRuns: (params?: {
+    offset?: number;
+    limit?: number;
+    project_id?: string;
+    status?: "success" | "failed" | "insufficient_evidence";
+  }) => {
+    const search = new URLSearchParams();
+    if (params?.offset !== undefined) {
+      search.set("offset", String(params.offset));
+    }
+    if (params?.limit !== undefined) {
+      search.set("limit", String(params.limit));
+    }
+    if (params?.project_id) {
+      search.set("project_id", params.project_id);
+    }
+    if (params?.status) {
+      search.set("status", params.status);
+    }
+    const query = search.toString();
+    return request<AskRunListResponse>(`/ask-runs${query ? `?${query}` : ""}`);
+  },
+  getAskRun: (askRunId: string) => request<AskRun>(`/ask-runs/${askRunId}`),
+  submitAskRunFeedback: (askRunId: string, payload: { rating: "positive" | "negative"; comment?: string }) =>
+    request(`/ask-runs/${askRunId}/feedback`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    }),
+  getQAMetrics: (projectId?: string) =>
+    request<QAMetrics>(`/metrics/qa${projectId ? `?project_id=${encodeURIComponent(projectId)}` : ""}`),
   listDocumentChunks: (documentId: string, params?: { offset?: number; limit?: number }) => {
     const search = new URLSearchParams();
     if (params?.offset !== undefined) {

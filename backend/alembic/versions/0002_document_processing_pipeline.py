@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "0002_document_processing_pipeline"
+revision = "0002_doc_processing"
 down_revision = "0001_initial"
 branch_labels = None
 depends_on = None

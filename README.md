@@ -14,6 +14,7 @@ Implemented:
 - Embedding + vector indexing into Qdrant
 - Retrieval + reranking v1 API (`POST /search`)
 - Grounded answer generation v1 API with citations (`POST /ask`)
+- Evaluation layer v1 with ask run persistence, feedback, and QA metrics
 - Retrieval + Ask debug UI on project details page
 
 Not implemented intentionally:
@@ -46,6 +47,10 @@ Search (retrieval + reranking):
 
 - `POST /search`
 - `POST /ask`
+- `GET /ask-runs`
+- `GET /ask-runs/{id}`
+- `POST /ask-runs/{id}/feedback`
+- `GET /metrics/qa`
 
 ## `/search` contract
 
@@ -113,6 +118,40 @@ Response fields:
   - `context_chunk_ids`
   - `llm_model`
 
+## Evaluation APIs
+
+`GET /ask-runs` query params:
+
+- `offset` (default 0)
+- `limit` (default 20, max 100)
+- optional `project_id`
+- optional `status` (`success | failed | insufficient_evidence`)
+
+`GET /ask-runs/{id}` returns full ask run details including:
+
+- debug trace fields (`retrieved_chunk_ids`, `reranked_chunk_ids`, `cited_chunk_ids`)
+- stored `citations[]`
+- optional `feedback`
+
+`POST /ask-runs/{id}/feedback` request:
+
+```json
+{
+  "rating": "positive",
+  "comment": "helpful and grounded"
+}
+```
+
+`GET /metrics/qa` returns:
+
+- `total_questions`
+- `success_count`
+- `failed_count`
+- `insufficient_evidence_count`
+- `average_latency_ms`
+- `positive_feedback_count`
+- `negative_feedback_count`
+
 ## Retrieval + reranking pipeline
 
 Pipeline order:
@@ -148,6 +187,8 @@ Service structure:
 - `app/services/llm/base.py`
 - `app/services/llm/factory.py`
 - `app/services/llm/openai_compatible.py`
+- `app/services/evaluation.py`
+- `app/services/metrics.py`
 
 Grounding behavior:
 

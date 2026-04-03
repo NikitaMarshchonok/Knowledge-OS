@@ -93,10 +93,61 @@ export interface AskDebugInfo {
 }
 
 export interface AskResponse {
+  ask_run_id: string;
   answer: string;
   citations: AskCitation[];
   supporting_results: SearchResult[];
   debug: AskDebugInfo | null;
+}
+
+export type AskRunStatus = "success" | "failed" | "insufficient_evidence";
+export type FeedbackRating = "positive" | "negative";
+
+export interface AskRunFeedback {
+  id: string;
+  ask_run_id: string;
+  rating: FeedbackRating;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AskRun {
+  id: string;
+  project_id: string;
+  query: string;
+  answer: string | null;
+  status: AskRunStatus;
+  llm_model: string | null;
+  embedding_model: string | null;
+  rerank_model: string | null;
+  latency_ms: number | null;
+  top_k: number;
+  error_message: string | null;
+  retrieved_chunk_ids: string[] | null;
+  reranked_chunk_ids: string[] | null;
+  cited_chunk_ids: string[] | null;
+  created_at: string;
+  updated_at: string;
+  citations: AskCitation[];
+  feedback: AskRunFeedback | null;
+}
+
+export interface AskRunListResponse {
+  total: number;
+  offset: number;
+  limit: number;
+  items: AskRun[];
+}
+
+export interface QAMetrics {
+  total_questions: number;
+  success_count: number;
+  failed_count: number;
+  insufficient_evidence_count: number;
+  average_latency_ms: number;
+  positive_feedback_count: number;
+  negative_feedback_count: number;
 }
 
 export interface ProjectDetail extends Project {

@@ -6,7 +6,7 @@ import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 
 import { DocumentsTable } from "@/components/documents-table";
 import { ApiError, api } from "@/lib/api";
-import { AskResponse, DocumentRecord, ProjectDetail, SearchResult } from "@/lib/types";
+import { AskResponse, AskRun, DocumentRecord, ProjectDetail, QAMetrics, SearchResult } from "@/lib/types";
 
 function hasInFlightDocuments(documents: DocumentRecord[]): boolean {
   return documents.some(
@@ -31,6 +31,12 @@ export default function ProjectDetailsPage() {
   const [askResponse, setAskResponse] = useState<AskResponse | null>(null);
   const [isAsking, setIsAsking] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
+  const [askRuns, setAskRuns] = useState<AskRun[]>([]);
+  const [isLoadingAskRuns, setIsLoadingAskRuns] = useState(false);
+  const [selectedAskRun, setSelectedAskRun] = useState<AskRun | null>(null);
+  const [isSubmittingFeedbackId, setIsSubmittingFeedbackId] = useState<string | null>(null);
+  const [qaMetrics, setQaMetrics] = useState<QAMetrics | null>(null);
+  const [evaluationError, setEvaluationError] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -59,11 +65,58 @@ export default function ProjectDetailsPage() {
     }
   };
 
+  const loadEvaluation = async (id: string) => {
+    try {
+      setIsLoadingAskRuns(true);
+      setEvaluationError(null);
+      const [runsResponse, metricsResponse] = await Promise.all([
+        api.listAskRuns({ project_id: id, limit: 10 }),
+        api.getQAMetrics(id)
+      ]);
+      setAskRuns(runsResponse.items);
+      setQaMetrics(metricsResponse);
+    } catch (err) {
+      setEvaluationError(err instanceof ApiError ? err.message : "Failed to load evaluation data");
+    } finally {
+      setIsLoadingAskRuns(false);
+    }
+  };
+
+  const openAskRunDetails = async (askRunId: string) => {
+    try {
+      setEvaluationError(null);
+      const details = await api.getAskRun(askRunId);
+      setSelectedAskRun(details);
+    } catch (err) {
+      setEvaluationError(err instanceof ApiError ? err.message : "Failed to load ask run details");
+    }
+  };
+
+  const submitFeedback = async (askRunId: string, rating: "positive" | "negative") => {
+    try {
+      setIsSubmittingFeedbackId(askRunId);
+      setEvaluationError(null);
+      await api.submitAskRunFeedback(askRunId, { rating });
+      if (projectId) {
+        await loadEvaluation(projectId);
+      }
+      if (selectedAskRun?.id === askRunId) {
+        const details = await api.getAskRun(askRunId);
+        setSelectedAskRun(details);
+      }
+    } catch (err) {
+      setEvaluationError(err instanceof ApiError ? err.message : "Failed to submit feedback");
+    } finally {
+      setIsSubmittingFeedbackId(null);
+    }
+  };
+
   useEffect(() => {
     if (!projectId) {
       return;
     }
     void loadProject(projectId);
+    void loadEvaluation(projectId);
   }, [projectId]);
 
   useEffect(() => {
@@ -161,6 +214,7 @@ export default function ProjectDetailsPage() {
         top_k: 6
       });
       setAskResponse(response);
+      await loadEvaluation(projectId);
     } catch (err) {
       setAskError(err instanceof ApiError ? err.message : "Ask request failed");
       setAskResponse(null);
@@ -309,6 +363,101 @@ export default function ProjectDetailsPage() {
               )}
             </article>
           </div>
+        ) : null}
+      </section>
+
+      <section className="card search-panel">
+        <h2>Evaluation Layer v1</h2>
+        <p className="subtle">Internal ask-run observability, metrics, and feedback capture.</p>
+        {evaluationError ? <p className="error-banner">{evaluationError}</p> : null}
+
+        {qaMetrics ? (
+          <p className="subtle">
+            total {qaMetrics.total_questions} | success {qaMetrics.success_count} | failed {qaMetrics.failed_count} |
+            insufficient {qaMetrics.insufficient_evidence_count} | avg latency {qaMetrics.average_latency_ms.toFixed(0)}ms |
+            👍 {qaMetrics.positive_feedback_count} | 👎 {qaMetrics.negative_feedback_count}
+          </p>
+        ) : null}
+
+        {isLoadingAskRuns ? (
+          <p className="subtle">Loading ask runs...</p>
+        ) : askRuns.length === 0 ? (
+          <p className="subtle">No ask runs yet for this project.</p>
+        ) : (
+          <div className="search-results">
+            {askRuns.map((run) => (
+              <article key={run.id} className="search-result-card">
+                <div className="search-result-head">
+                  <strong>{run.query}</strong>
+                  <span className="subtle">{run.status}</span>
+                </div>
+                <p className="subtle">
+                  {new Date(run.created_at).toLocaleString()} | latency {run.latency_ms ?? "n/a"}ms | top_k {run.top_k}
+                </p>
+                <p className="search-content">{(run.answer || run.error_message || "").slice(0, 220)}</p>
+                <div className="inline-actions">
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    onClick={() => void openAskRunDetails(run.id)}
+                    disabled={isSubmittingFeedbackId === run.id}
+                  >
+                    Details
+                  </button>
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    onClick={() => void submitFeedback(run.id, "positive")}
+                    disabled={isSubmittingFeedbackId === run.id}
+                  >
+                    👍
+                  </button>
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    onClick={() => void submitFeedback(run.id, "negative")}
+                    disabled={isSubmittingFeedbackId === run.id}
+                  >
+                    👎
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+
+        {selectedAskRun ? (
+          <article className="search-result-card" style={{ marginTop: "1rem" }}>
+            <div className="search-result-head">
+              <strong>Ask Run Details</strong>
+              <span className="subtle">{selectedAskRun.id}</span>
+            </div>
+            <p className="subtle">
+              model {selectedAskRun.llm_model || "n/a"} | embedding {selectedAskRun.embedding_model || "n/a"} | rerank{" "}
+              {selectedAskRun.rerank_model || "n/a"}
+            </p>
+            <p className="search-content">{selectedAskRun.answer || selectedAskRun.error_message || "No answer captured."}</p>
+            <p className="subtle">
+              retrieved {selectedAskRun.retrieved_chunk_ids?.length || 0} | reranked{" "}
+              {selectedAskRun.reranked_chunk_ids?.length || 0} | cited {selectedAskRun.cited_chunk_ids?.length || 0}
+            </p>
+            <div>
+              <strong>Citations</strong>
+              {selectedAskRun.citations.length === 0 ? (
+                <p className="subtle">No citations stored for this run.</p>
+              ) : (
+                selectedAskRun.citations.map((citation) => (
+                  <div key={`${citation.chunk_id}-${citation.chunk_index}`} style={{ marginTop: "0.5rem" }}>
+                    <p className="subtle">
+                      {citation.source_filename} | chunk #{citation.chunk_index} | chars {citation.char_start}-
+                      {citation.char_end}
+                    </p>
+                    <p className="search-content">{citation.snippet}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </article>
         ) : null}
       </section>
     </main>
