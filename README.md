@@ -219,7 +219,21 @@ Important backend env vars:
 - `LLM_MAX_TOKENS`
 - `LLM_TIMEOUT_SECONDS`
 
-Defaults use local embedding-similarity reranking provider.
+Defaults use local embedding-similarity reranking provider and local Ollama for answer generation.
+
+Default LLM settings:
+
+- `LLM_PROVIDER=openai_compatible`
+- `LLM_BASE_URL=http://localhost:11434/v1` (or `http://host.docker.internal:11434/v1` in Docker backend)
+- `LLM_MODEL_NAME=qwen2.5:7b-instruct`
+- `LLM_API_KEY` can stay empty for Ollama
+
+Before running `/ask` with Ollama, start a local model:
+
+```bash
+ollama pull qwen2.5:7b-instruct
+ollama run qwen2.5:7b-instruct
+```
 
 ## Dependencies
 

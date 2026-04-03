@@ -75,11 +75,25 @@ class QdrantIndexService:
 
         query_filter = models.Filter(must=conditions)
 
-        return self.client.search(
+        # qdrant-client API differs by version: older clients expose `search`,
+        # newer clients expose `query_points`.
+        if hasattr(self.client, "search"):
+            return self.client.search(
+                collection_name=self.collection_name,
+                query_vector=query_vector,
+                query_filter=query_filter,
+                limit=limit,
+                with_payload=True,
+                with_vectors=False,
+            )
+
+        query_response = self.client.query_points(
             collection_name=self.collection_name,
-            query_vector=query_vector,
+            query=query_vector,
             query_filter=query_filter,
             limit=limit,
             with_payload=True,
             with_vectors=False,
         )
+        points = getattr(query_response, "points", query_response)
+        return list(points)

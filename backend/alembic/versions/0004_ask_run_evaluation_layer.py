@@ -32,7 +32,7 @@ def upgrade() -> None:
         sa.Column("answer", sa.Text(), nullable=True),
         sa.Column(
             "status",
-            sa.Enum("success", "failed", "insufficient_evidence", name="ask_run_status"),
+            postgresql.ENUM("success", "failed", "insufficient_evidence", name="ask_run_status", create_type=False),
             nullable=False,
         ),
         sa.Column("llm_model", sa.String(length=255), nullable=True),
@@ -74,7 +74,7 @@ def upgrade() -> None:
         "ask_run_feedback",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("ask_run_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("rating", sa.Enum("positive", "negative", name="feedback_rating"), nullable=False),
+        sa.Column("rating", postgresql.ENUM("positive", "negative", name="feedback_rating", create_type=False), nullable=False),
         sa.Column("comment", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
