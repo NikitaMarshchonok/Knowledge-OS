@@ -150,6 +150,37 @@ export interface QAMetrics {
   negative_feedback_count: number;
 }
 
+export type ChatMessageRole = "user" | "assistant";
+
+export interface ChatSession {
+  id: string;
+  project_id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  session_id: string;
+  role: ChatMessageRole;
+  content: string;
+  ask_run_id: string | null;
+  created_at: string;
+}
+
+export interface ChatSessionDetail extends ChatSession {
+  messages: ChatMessage[];
+}
+
+export interface ChatMessageExchangeResponse {
+  session: ChatSession;
+  user_message: ChatMessage;
+  assistant_message: ChatMessage;
+  citations: AskCitation[];
+  supporting_results: SearchResult[];
+}
+
 export interface ProjectDetail extends Project {
   documents: DocumentRecord[];
 }

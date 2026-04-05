@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models import AskRunStatus
-from app.schemas.ask import AskDebugInfo, AskRequest, AskResponse, Citation
+from app.schemas.ask import AskDebugInfo, AskRequest, AskResponse, Citation, ConversationTurn
 from app.schemas.search import SearchRequest, SearchResult
 from app.services.embeddings.factory import get_embedding_provider
 from app.services.evaluation import EvaluationError, EvaluationService
@@ -107,7 +107,7 @@ class AnswerGenerationService:
 
         context_results = search_response.results[: payload.top_k]
         llm = get_llm_provider()
-        user_prompt = self._build_user_prompt(query, context_results)
+        user_prompt = self._build_user_prompt(query, context_results, payload.conversation_history)
         try:
             answer = llm.generate(
                 system_prompt=SYSTEM_PROMPT,
@@ -154,7 +154,14 @@ class AnswerGenerationService:
             debug=self._build_debug(context_results, llm.model_name) if payload.debug else None,
         )
 
-    def _build_user_prompt(self, query: str, results: list[SearchResult]) -> str:
+    def _build_user_prompt(
+        self, query: str, results: list[SearchResult], conversation_history: list[ConversationTurn]
+    ) -> str:
+        history_lines = []
+        for turn in conversation_history[-8:]:
+            history_lines.append(f"{turn.role.upper()}: {turn.content}")
+        history_block = "\n".join(history_lines)
+
         context_lines = []
         for idx, result in enumerate(results, start=1):
             context_lines.append(
@@ -167,6 +174,7 @@ class AnswerGenerationService:
         context_block = "\n\n".join(context_lines)
         return (
             f"Question:\n{query}\n\n"
+            f"Conversation history (for context continuity only):\n{history_block or '(none)'}\n\n"
             "Context chunks:\n"
             f"{context_block}\n\n"
             "Write a concise grounded answer with inline citations [C#]."

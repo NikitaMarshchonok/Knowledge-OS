@@ -5,6 +5,11 @@ from pydantic import BaseModel, Field
 from app.schemas.search import SearchResult
 
 
+class ConversationTurn(BaseModel):
+    role: str = Field(pattern="^(user|assistant)$")
+    content: str = Field(min_length=1)
+
+
 class AskRequest(BaseModel):
     query: str = Field(min_length=1)
     project_id: UUID
@@ -12,6 +17,7 @@ class AskRequest(BaseModel):
     document_ids: list[UUID] | None = None
     mime_types: list[str] | None = None
     debug: bool = False
+    conversation_history: list[ConversationTurn] = Field(default_factory=list)
 
 
 class Citation(BaseModel):

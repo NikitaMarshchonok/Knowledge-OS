@@ -2,6 +2,9 @@ import {
   AskRun,
   AskRunListResponse,
   AskResponse,
+  ChatMessageExchangeResponse,
+  ChatSession,
+  ChatSessionDetail,
   DocumentChunk,
   DocumentIndexStatus,
   DocumentRecord,
@@ -130,6 +133,43 @@ export const api = {
     }),
   getQAMetrics: (projectId?: string) =>
     request<QAMetrics>(`/metrics/qa${projectId ? `?project_id=${encodeURIComponent(projectId)}` : ""}`),
+  listChatSessions: (params?: { project_id?: string; limit?: number }) => {
+    const search = new URLSearchParams();
+    if (params?.project_id) {
+      search.set("project_id", params.project_id);
+    }
+    if (params?.limit !== undefined) {
+      search.set("limit", String(params.limit));
+    }
+    const query = search.toString();
+    return request<ChatSession[]>(`/chat/sessions${query ? `?${query}` : ""}`);
+  },
+  createChatSession: (payload: { project_id: string; title?: string }) =>
+    request<ChatSession>("/chat/sessions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    }),
+  getChatSession: (sessionId: string) => request<ChatSessionDetail>(`/chat/sessions/${sessionId}`),
+  sendChatMessage: (
+    sessionId: string,
+    payload: {
+      content: string;
+      top_k?: number;
+      document_ids?: string[];
+      mime_types?: string[];
+      debug?: boolean;
+    }
+  ) =>
+    request<ChatMessageExchangeResponse>(`/chat/sessions/${sessionId}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    }),
   listDocumentChunks: (documentId: string, params?: { offset?: number; limit?: number }) => {
     const search = new URLSearchParams();
     if (params?.offset !== undefined) {

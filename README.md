@@ -15,11 +15,11 @@ Implemented:
 - Retrieval + reranking v1 API (`POST /search`)
 - Grounded answer generation v1 API with citations (`POST /ask`)
 - Evaluation layer v1 with ask run persistence, feedback, and QA metrics
-- Retrieval + Ask debug UI on project details page
+- Chat v1 with grounded multi-turn sessions and citations
+- Retrieval + Ask + Chat debug UI on project details page
 
 Not implemented intentionally:
 
-- Multi-turn chat
 - Agent workflows
 - Hybrid retrieval
 - Worker queue changes
@@ -51,6 +51,10 @@ Search (retrieval + reranking):
 - `GET /ask-runs/{id}`
 - `POST /ask-runs/{id}/feedback`
 - `GET /metrics/qa`
+- `POST /chat/sessions`
+- `GET /chat/sessions`
+- `GET /chat/sessions/{id}`
+- `POST /chat/sessions/{id}/messages`
 
 ## `/search` contract
 
