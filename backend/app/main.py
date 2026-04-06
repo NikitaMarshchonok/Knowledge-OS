@@ -5,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes.ask import router as ask_router
 from app.api.routes.ask_runs import router as ask_runs_router
-from app.api.routes.chat import router as chat_router
 from app.api.routes.documents import router as documents_router
 from app.api.routes.health import router as health_router
 from app.api.routes.metrics import router as metrics_router
@@ -36,6 +35,5 @@ app.include_router(projects_router)
 app.include_router(documents_router)
 app.include_router(search_router)
 app.include_router(ask_router)
-app.include_router(chat_router)
 app.include_router(ask_runs_router)
 app.include_router(metrics_router)

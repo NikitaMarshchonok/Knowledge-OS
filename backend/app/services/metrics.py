@@ -20,6 +20,18 @@ class MetricsService:
 
         avg_latency = runs_query.with_entities(func.avg(AskRun.latency_ms)).scalar()
         average_latency_ms = float(avg_latency or 0.0)
+        p50_latency = (
+            runs_query.filter(AskRun.latency_ms.isnot(None))
+            .with_entities(func.percentile_cont(0.5).within_group(AskRun.latency_ms.asc()))
+            .scalar()
+        )
+        p95_latency = (
+            runs_query.filter(AskRun.latency_ms.isnot(None))
+            .with_entities(func.percentile_cont(0.95).within_group(AskRun.latency_ms.asc()))
+            .scalar()
+        )
+        latency_p50_ms = float(p50_latency or 0.0)
+        latency_p95_ms = float(p95_latency or 0.0)
 
         feedback_query = db.query(AskRunFeedback).join(AskRun, AskRun.id == AskRunFeedback.ask_run_id)
         if project_id is not None:
@@ -27,6 +39,8 @@ class MetricsService:
 
         positive_feedback_count = feedback_query.filter(AskRunFeedback.rating == FeedbackRating.positive).count()
         negative_feedback_count = feedback_query.filter(AskRunFeedback.rating == FeedbackRating.negative).count()
+        feedback_count = positive_feedback_count + negative_feedback_count
+        feedback_rate = float(feedback_count / total_questions) if total_questions > 0 else 0.0
 
         return QAMetricsResponse(
             total_questions=total_questions,
@@ -34,6 +48,10 @@ class MetricsService:
             failed_count=failed_count,
             insufficient_evidence_count=insufficient_evidence_count,
             average_latency_ms=average_latency_ms,
+            latency_p50_ms=latency_p50_ms,
+            latency_p95_ms=latency_p95_ms,
             positive_feedback_count=positive_feedback_count,
             negative_feedback_count=negative_feedback_count,
+            feedback_count=feedback_count,
+            feedback_rate=feedback_rate,
         )

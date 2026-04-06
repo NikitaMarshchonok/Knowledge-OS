@@ -15,8 +15,7 @@ Implemented:
 - Retrieval + reranking v1 API (`POST /search`)
 - Grounded answer generation v1 API with citations (`POST /ask`)
 - Evaluation layer v1 with ask run persistence, feedback, and QA metrics
-- Chat v1 with grounded multi-turn sessions and citations
-- Retrieval + Ask + Chat debug UI on project details page
+- Retrieval + Ask debug UI on project details page
 
 Not implemented intentionally:
 
@@ -51,10 +50,6 @@ Search (retrieval + reranking):
 - `GET /ask-runs/{id}`
 - `POST /ask-runs/{id}/feedback`
 - `GET /metrics/qa`
-- `POST /chat/sessions`
-- `GET /chat/sessions`
-- `GET /chat/sessions/{id}`
-- `POST /chat/sessions/{id}/messages`
 
 ## `/search` contract
 
@@ -153,8 +148,12 @@ Response fields:
 - `failed_count`
 - `insufficient_evidence_count`
 - `average_latency_ms`
+- `latency_p50_ms`
+- `latency_p95_ms`
 - `positive_feedback_count`
 - `negative_feedback_count`
+- `feedback_count`
+- `feedback_rate`
 
 ## Retrieval + reranking pipeline
 

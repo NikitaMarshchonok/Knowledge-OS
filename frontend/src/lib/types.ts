@@ -146,39 +146,12 @@ export interface QAMetrics {
   failed_count: number;
   insufficient_evidence_count: number;
   average_latency_ms: number;
+  latency_p50_ms: number;
+  latency_p95_ms: number;
   positive_feedback_count: number;
   negative_feedback_count: number;
-}
-
-export type ChatMessageRole = "user" | "assistant";
-
-export interface ChatSession {
-  id: string;
-  project_id: string;
-  title: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  session_id: string;
-  role: ChatMessageRole;
-  content: string;
-  ask_run_id: string | null;
-  created_at: string;
-}
-
-export interface ChatSessionDetail extends ChatSession {
-  messages: ChatMessage[];
-}
-
-export interface ChatMessageExchangeResponse {
-  session: ChatSession;
-  user_message: ChatMessage;
-  assistant_message: ChatMessage;
-  citations: AskCitation[];
-  supporting_results: SearchResult[];
+  feedback_count: number;
+  feedback_rate: number;
 }
 
 export interface ProjectDetail extends Project {

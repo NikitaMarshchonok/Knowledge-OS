@@ -2,21 +2,11 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ChangeEvent, FormEvent, useCallback, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 
 import { DocumentsTable } from "@/components/documents-table";
 import { ApiError, api } from "@/lib/api";
-import {
-  AskCitation,
-  AskResponse,
-  AskRun,
-  ChatMessage,
-  ChatSession,
-  DocumentRecord,
-  ProjectDetail,
-  QAMetrics,
-  SearchResult
-} from "@/lib/types";
+import { AskResponse, AskRun, DocumentRecord, ProjectDetail, QAMetrics, SearchResult } from "@/lib/types";
 
 function hasInFlightDocuments(documents: DocumentRecord[]): boolean {
   return documents.some(
@@ -47,13 +37,6 @@ export default function ProjectDetailsPage() {
   const [isSubmittingFeedbackId, setIsSubmittingFeedbackId] = useState<string | null>(null);
   const [qaMetrics, setQaMetrics] = useState<QAMetrics | null>(null);
   const [evaluationError, setEvaluationError] = useState<string | null>(null);
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
-  const [activeChatSessionId, setActiveChatSessionId] = useState<string | null>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState("");
-  const [chatCitations, setChatCitations] = useState<AskCitation[]>([]);
-  const [isSendingChatMessage, setIsSendingChatMessage] = useState(false);
-  const [chatError, setChatError] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -99,53 +82,6 @@ export default function ProjectDetailsPage() {
     }
   };
 
-  const loadChatSessions = useCallback(async (id: string) => {
-    try {
-      setChatError(null);
-      const sessions = await api.listChatSessions({ project_id: id, limit: 20 });
-      setChatSessions(sessions);
-
-      if (sessions.length === 0) {
-        setActiveChatSessionId(null);
-        setChatMessages([]);
-        return;
-      }
-
-      const currentId = sessions[0].id;
-      setActiveChatSessionId(currentId);
-      const detail = await api.getChatSession(currentId);
-      setChatMessages(detail.messages);
-    } catch (err) {
-      setChatError(err instanceof ApiError ? err.message : "Failed to load chat sessions");
-    }
-  }, []);
-
-  const createChatSession = async () => {
-    if (!projectId) {
-      return;
-    }
-    try {
-      setChatError(null);
-      const created = await api.createChatSession({ project_id: projectId, title: "Project chat" });
-      setChatSessions((prev) => [created, ...prev]);
-      setActiveChatSessionId(created.id);
-      setChatMessages([]);
-    } catch (err) {
-      setChatError(err instanceof ApiError ? err.message : "Failed to create chat session");
-    }
-  };
-
-  const openChatSession = async (sessionId: string) => {
-    try {
-      setChatError(null);
-      setActiveChatSessionId(sessionId);
-      const detail = await api.getChatSession(sessionId);
-      setChatMessages(detail.messages);
-    } catch (err) {
-      setChatError(err instanceof ApiError ? err.message : "Failed to open chat session");
-    }
-  };
-
   const openAskRunDetails = async (askRunId: string) => {
     try {
       setEvaluationError(null);
@@ -181,8 +117,7 @@ export default function ProjectDetailsPage() {
     }
     void loadProject(projectId);
     void loadEvaluation(projectId);
-    void loadChatSessions(projectId);
-  }, [projectId, loadChatSessions]);
+  }, [projectId]);
 
   useEffect(() => {
     if (!projectId || !shouldPoll) {
@@ -285,39 +220,6 @@ export default function ProjectDetailsPage() {
       setAskResponse(null);
     } finally {
       setIsAsking(false);
-    }
-  };
-
-  const handleSendChatMessage = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!projectId || !chatInput.trim()) {
-      return;
-    }
-
-    try {
-      setIsSendingChatMessage(true);
-      setChatError(null);
-
-      let targetSessionId = activeChatSessionId;
-      if (!targetSessionId) {
-        const created = await api.createChatSession({ project_id: projectId, title: "Project chat" });
-        setChatSessions((prev) => [created, ...prev]);
-        setActiveChatSessionId(created.id);
-        targetSessionId = created.id;
-      }
-
-      const response = await api.sendChatMessage(targetSessionId, {
-        content: chatInput.trim(),
-        top_k: 6
-      });
-      setChatMessages((prev) => [...prev, response.user_message, response.assistant_message]);
-      setChatCitations(response.citations);
-      setChatInput("");
-      await loadEvaluation(projectId);
-    } catch (err) {
-      setChatError(err instanceof ApiError ? err.message : "Failed to send chat message");
-    } finally {
-      setIsSendingChatMessage(false);
     }
   };
 
@@ -465,73 +367,6 @@ export default function ProjectDetailsPage() {
       </section>
 
       <section className="card search-panel">
-        <h2>Chat v1 (Grounded Multi-turn)</h2>
-        <p className="subtle">Session-based chat using the same retrieval/reranking and citation grounding pipeline.</p>
-
-        <div className="inline-actions">
-          <button type="button" className="button-secondary" onClick={() => void createChatSession()}>
-            New chat session
-          </button>
-          {chatSessions.map((session) => (
-            <button
-              key={session.id}
-              type="button"
-              className="button-secondary"
-              onClick={() => void openChatSession(session.id)}
-              disabled={activeChatSessionId === session.id}
-            >
-              {session.title || "Session"} {activeChatSessionId === session.id ? "(active)" : ""}
-            </button>
-          ))}
-        </div>
-
-        <form className="search-form" onSubmit={handleSendChatMessage}>
-          <input
-            value={chatInput}
-            onChange={(event) => setChatInput(event.target.value)}
-            placeholder="Ask follow-up questions in a chat session"
-          />
-          <button type="submit" className="button-primary" disabled={isSendingChatMessage || !chatInput.trim()}>
-            {isSendingChatMessage ? "Sending..." : "Send"}
-          </button>
-        </form>
-
-        {chatError ? <p className="error-banner">{chatError}</p> : null}
-
-        <div className="search-results">
-          {chatMessages.length === 0 ? (
-            <p className="subtle">No chat messages yet. Create a session and send your first message.</p>
-          ) : (
-            chatMessages.map((message) => (
-              <article key={message.id} className="search-result-card">
-                <div className="search-result-head">
-                  <strong>{message.role === "user" ? "You" : "Assistant"}</strong>
-                  <span className="subtle">{new Date(message.created_at).toLocaleTimeString()}</span>
-                </div>
-                <p className="search-content">{message.content}</p>
-              </article>
-            ))
-          )}
-        </div>
-
-        {chatCitations.length > 0 ? (
-          <article className="search-result-card">
-            <div className="search-result-head">
-              <strong>Latest response citations</strong>
-            </div>
-            {chatCitations.map((citation) => (
-              <div key={`${citation.chunk_id}-${citation.chunk_index}`} style={{ marginTop: "0.5rem" }}>
-                <p className="subtle">
-                  {citation.source_filename} | chunk #{citation.chunk_index} | chars {citation.char_start}-{citation.char_end}
-                </p>
-                <p className="search-content">{citation.snippet}</p>
-              </div>
-            ))}
-          </article>
-        ) : null}
-      </section>
-
-      <section className="card search-panel">
         <h2>Evaluation Layer v1</h2>
         <p className="subtle">Internal ask-run observability, metrics, and feedback capture.</p>
         {evaluationError ? <p className="error-banner">{evaluationError}</p> : null}
@@ -540,7 +375,9 @@ export default function ProjectDetailsPage() {
           <p className="subtle">
             total {qaMetrics.total_questions} | success {qaMetrics.success_count} | failed {qaMetrics.failed_count} |
             insufficient {qaMetrics.insufficient_evidence_count} | avg latency {qaMetrics.average_latency_ms.toFixed(0)}ms |
-            👍 {qaMetrics.positive_feedback_count} | 👎 {qaMetrics.negative_feedback_count}
+            p50 {qaMetrics.latency_p50_ms.toFixed(0)}ms | p95 {qaMetrics.latency_p95_ms.toFixed(0)}ms | feedback{" "}
+            {(qaMetrics.feedback_rate * 100).toFixed(0)}% | 👍 {qaMetrics.positive_feedback_count} | 👎{" "}
+            {qaMetrics.negative_feedback_count}
           </p>
         ) : null}
 
