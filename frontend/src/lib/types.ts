@@ -90,6 +90,12 @@ export interface AskCitation {
 export interface AskDebugInfo {
   context_chunk_ids: string[];
   llm_model: string;
+  top_vector_score: number | null;
+  top_rerank_score: number | null;
+  min_results_for_answer: number | null;
+  min_top_vector_score: number | null;
+  min_top_rerank_score: number | null;
+  insufficient_evidence_reason: string | null;
 }
 
 export interface AskResponse {

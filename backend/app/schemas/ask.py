@@ -27,6 +27,12 @@ class Citation(BaseModel):
 class AskDebugInfo(BaseModel):
     context_chunk_ids: list[UUID]
     llm_model: str
+    top_vector_score: float | None = None
+    top_rerank_score: float | None = None
+    min_results_for_answer: int | None = None
+    min_top_vector_score: float | None = None
+    min_top_rerank_score: float | None = None
+    insufficient_evidence_reason: str | None = None
 
 
 class AskResponse(BaseModel):

@@ -90,7 +90,7 @@ class AnswerGenerationService:
                 status=AskRunStatus.insufficient_evidence,
                 answer=answer,
                 llm_model=None,
-                error_message=None,
+                error_message="insufficient_evidence:no_results",
                 started_at=started_at,
                 retrieved_chunk_ids=retrieved_chunk_ids,
                 reranked_chunk_ids=reranked_chunk_ids,
@@ -102,10 +102,52 @@ class AnswerGenerationService:
                 answer=answer,
                 citations=[],
                 supporting_results=[],
-                debug=self._build_debug(search_response.results) if payload.debug else None,
+                debug=self._build_debug(
+                    search_response.results,
+                    insufficient_evidence_reason="no_results",
+                )
+                if payload.debug
+                else None,
             )
 
         context_results = search_response.results[: payload.top_k]
+        top_vector_score = context_results[0].original_vector_score if context_results else None
+        top_rerank_score = context_results[0].rerank_score if context_results else None
+        insufficient_reason = self._get_insufficient_evidence_reason(
+            results=context_results,
+            top_vector_score=top_vector_score,
+            top_rerank_score=top_rerank_score,
+        )
+        if insufficient_reason is not None:
+            answer = "Insufficient evidence in indexed documents to answer this question."
+            self._finalize_run(
+                db=db,
+                ask_run_id=ask_run.id,
+                status=AskRunStatus.insufficient_evidence,
+                answer=answer,
+                llm_model=None,
+                error_message=f"insufficient_evidence:{insufficient_reason}",
+                started_at=started_at,
+                retrieved_chunk_ids=retrieved_chunk_ids,
+                reranked_chunk_ids=reranked_chunk_ids,
+                cited_chunk_ids=[],
+                citations=[],
+            )
+            return AskResponse(
+                ask_run_id=ask_run.id,
+                answer=answer,
+                citations=[],
+                supporting_results=context_results,
+                debug=self._build_debug(
+                    context_results,
+                    top_vector_score=top_vector_score,
+                    top_rerank_score=top_rerank_score,
+                    insufficient_evidence_reason=insufficient_reason,
+                )
+                if payload.debug
+                else None,
+            )
+
         llm = get_llm_provider()
         user_prompt = self._build_user_prompt(query, context_results)
         try:
@@ -151,7 +193,14 @@ class AnswerGenerationService:
             answer=answer,
             citations=citations,
             supporting_results=context_results,
-            debug=self._build_debug(context_results, llm.model_name) if payload.debug else None,
+            debug=self._build_debug(
+                context_results,
+                model_name=llm.model_name,
+                top_vector_score=top_vector_score,
+                top_rerank_score=top_rerank_score,
+            )
+            if payload.debug
+            else None,
         )
 
     def _build_user_prompt(self, query: str, results: list[SearchResult]) -> str:
@@ -213,11 +262,42 @@ class AnswerGenerationService:
             return clean
         return f"{clean[:max_len].rstrip()}..."
 
-    def _build_debug(self, results: Iterable[SearchResult], model_name: str | None = None) -> AskDebugInfo:
+    def _build_debug(
+        self,
+        results: Iterable[SearchResult],
+        model_name: str | None = None,
+        top_vector_score: float | None = None,
+        top_rerank_score: float | None = None,
+        insufficient_evidence_reason: str | None = None,
+    ) -> AskDebugInfo:
         return AskDebugInfo(
             context_chunk_ids=[result.chunk_id for result in results],
             llm_model=model_name or self.settings.llm_model_name,
+            top_vector_score=top_vector_score,
+            top_rerank_score=top_rerank_score,
+            min_results_for_answer=self.settings.ask_min_results_for_answer,
+            min_top_vector_score=self.settings.ask_min_top_vector_score,
+            min_top_rerank_score=self.settings.ask_min_top_rerank_score,
+            insufficient_evidence_reason=insufficient_evidence_reason,
         )
+
+    def _get_insufficient_evidence_reason(
+        self,
+        *,
+        results: list[SearchResult],
+        top_vector_score: float | None,
+        top_rerank_score: float | None,
+    ) -> str | None:
+        if len(results) < self.settings.ask_min_results_for_answer:
+            return "too_few_results"
+        if top_vector_score is None or top_vector_score < self.settings.ask_min_top_vector_score:
+            return "low_top_vector_score"
+        # If reranking is disabled or rerank score is missing, don't block on rerank threshold.
+        if top_rerank_score is None:
+            return None
+        if top_rerank_score < self.settings.ask_min_top_rerank_score:
+            return "low_top_rerank_score"
+        return None
 
     def _finalize_run(
         self,

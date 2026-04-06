@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.1
     llm_max_tokens: int = 400
     llm_timeout_seconds: int = 30
+    ask_min_results_for_answer: int = 2
+    ask_min_top_vector_score: float = 0.15
+    ask_min_top_rerank_score: float = 0.10
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 
