@@ -31,6 +31,7 @@ export default function ProjectDetailsPage() {
   const [askResponse, setAskResponse] = useState<AskResponse | null>(null);
   const [isAsking, setIsAsking] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
+  const [expandedCitationKeys, setExpandedCitationKeys] = useState<Record<string, boolean>>({});
   const [askRuns, setAskRuns] = useState<AskRun[]>([]);
   const [isLoadingAskRuns, setIsLoadingAskRuns] = useState(false);
   const [selectedAskRun, setSelectedAskRun] = useState<AskRun | null>(null);
@@ -215,6 +216,7 @@ export default function ProjectDetailsPage() {
         debug: true
       });
       setAskResponse(response);
+      setExpandedCitationKeys({});
       await loadEvaluation(projectId);
     } catch (err) {
       setAskError(err instanceof ApiError ? err.message : "Ask request failed");
@@ -222,6 +224,13 @@ export default function ProjectDetailsPage() {
     } finally {
       setIsAsking(false);
     }
+  };
+
+  const toggleCitationContext = (citationKey: string) => {
+    setExpandedCitationKeys((prev) => ({
+      ...prev,
+      [citationKey]: !prev[citationKey]
+    }));
   };
 
   return (
@@ -352,15 +361,42 @@ export default function ProjectDetailsPage() {
               {askResponse.citations.length === 0 ? (
                 <p className="subtle">No citation references were emitted by the model for this answer.</p>
               ) : (
-                askResponse.citations.map((citation) => (
-                  <div key={citation.chunk_id} style={{ marginBottom: "0.75rem" }}>
-                    <p className="subtle">
-                      {citation.source_filename} | chunk #{citation.chunk_index} | chars {citation.char_start}-
-                      {citation.char_end}
-                    </p>
-                    <p className="search-content">{citation.snippet}</p>
-                  </div>
-                ))
+                askResponse.citations.map((citation) => {
+                  const citationKey = `${citation.chunk_id}-${citation.chunk_index}`;
+                  const matchingResult = askResponse.supporting_results.find(
+                    (result) => result.chunk_id === citation.chunk_id
+                  );
+
+                  return (
+                    <div key={citationKey} style={{ marginBottom: "0.75rem" }}>
+                      <p className="subtle">
+                        {citation.source_filename} | chunk #{citation.chunk_index} | chars {citation.char_start}-
+                        {citation.char_end}
+                      </p>
+                      <p className="search-content">{citation.snippet}</p>
+                      <div className="inline-actions">
+                        <button
+                          type="button"
+                          className="button-secondary"
+                          onClick={() => toggleCitationContext(citationKey)}
+                          disabled={!matchingResult}
+                        >
+                          {expandedCitationKeys[citationKey] ? "Hide full context" : "Show full context"}
+                        </button>
+                        {matchingResult ? (
+                          <span className="subtle">rank #{matchingResult.final_rank}</span>
+                        ) : (
+                          <span className="subtle">context unavailable</span>
+                        )}
+                      </div>
+                      {matchingResult && expandedCitationKeys[citationKey] ? (
+                        <p className="search-content" style={{ marginTop: "0.5rem" }}>
+                          {matchingResult.content}
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                })
               )}
             </article>
 
