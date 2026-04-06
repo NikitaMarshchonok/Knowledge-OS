@@ -221,6 +221,9 @@ Important backend env vars:
 - `LLM_TEMPERATURE`
 - `LLM_MAX_TOKENS`
 - `LLM_TIMEOUT_SECONDS`
+- `ASK_MIN_RESULTS_FOR_ANSWER`
+- `ASK_MIN_TOP_VECTOR_SCORE`
+- `ASK_MIN_TOP_RERANK_SCORE`
 
 Defaults use local embedding-similarity reranking provider and local Ollama for answer generation.
 

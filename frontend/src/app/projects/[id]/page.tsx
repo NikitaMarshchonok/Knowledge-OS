@@ -211,7 +211,8 @@ export default function ProjectDetailsPage() {
       const response = await api.ask({
         query: askQuery.trim(),
         project_id: projectId,
-        top_k: 6
+        top_k: 6,
+        debug: true
       });
       setAskResponse(response);
       await loadEvaluation(projectId);
@@ -362,6 +363,31 @@ export default function ProjectDetailsPage() {
                 ))
               )}
             </article>
+
+            {askResponse.debug ? (
+              <article className="search-result-card">
+                <div className="search-result-head">
+                  <strong>Ask debug</strong>
+                </div>
+                <p className="subtle">
+                  model {askResponse.debug.llm_model} | context chunks {askResponse.debug.context_chunk_ids.length}
+                </p>
+                <p className="subtle">
+                  top vector{" "}
+                  {askResponse.debug.top_vector_score === null ? "n/a" : askResponse.debug.top_vector_score.toFixed(4)} |
+                  top rerank{" "}
+                  {askResponse.debug.top_rerank_score === null ? "n/a" : askResponse.debug.top_rerank_score.toFixed(4)}
+                </p>
+                <p className="subtle">
+                  min results {askResponse.debug.min_results_for_answer ?? "n/a"} | min vector{" "}
+                  {askResponse.debug.min_top_vector_score ?? "n/a"} | min rerank{" "}
+                  {askResponse.debug.min_top_rerank_score ?? "n/a"}
+                </p>
+                <p className="subtle">
+                  insufficient reason: {askResponse.debug.insufficient_evidence_reason || "none"}
+                </p>
+              </article>
+            ) : null}
           </div>
         ) : null}
       </section>
