@@ -14,6 +14,23 @@ function hasInFlightDocuments(documents: DocumentRecord[]): boolean {
   );
 }
 
+function getRetrievalReadiness(documents: DocumentRecord[]) {
+  const indexedCount = documents.filter((document) => document.status === "indexed").length;
+  const processedNotIndexedCount = documents.filter((document) => document.status === "processed").length;
+  const processingCount = documents.filter(
+    (document) => document.status === "uploaded" || document.status === "processing" || document.is_indexing
+  ).length;
+  const failedCount = documents.filter((document) => document.status === "failed").length;
+
+  return {
+    indexedCount,
+    processedNotIndexedCount,
+    processingCount,
+    failedCount,
+    isReady: indexedCount > 0
+  };
+}
+
 export default function ProjectDetailsPage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id;
@@ -43,6 +60,7 @@ export default function ProjectDetailsPage() {
 
   const documents = project?.documents || [];
   const shouldPoll = hasInFlightDocuments(documents);
+  const retrievalReadiness = getRetrievalReadiness(documents);
 
   const loadProject = async (id: string, options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
@@ -275,6 +293,11 @@ export default function ProjectDetailsPage() {
 
       <section className="card">
         <h2>Documents</h2>
+        <p className="subtle">
+          Indexed docs: {retrievalReadiness.indexedCount} | processed (needs indexing):{" "}
+          {retrievalReadiness.processedNotIndexedCount} | processing: {retrievalReadiness.processingCount} | failed:{" "}
+          {retrievalReadiness.failedCount}
+        </p>
         {isLoading ? (
           <p className="subtle">Loading project details...</p>
         ) : (
@@ -290,6 +313,11 @@ export default function ProjectDetailsPage() {
       <section className="card search-panel">
         <h2>Retrieval + Reranking v1</h2>
         <p className="subtle">Vector candidates are reranked before returning final top-k results.</p>
+        {!retrievalReadiness.isReady ? (
+          <p className="subtle">
+            Retrieval is not ready yet. Upload and index at least one document before running search.
+          </p>
+        ) : null}
 
         <form className="search-form" onSubmit={handleSearch}>
           <input
@@ -297,8 +325,12 @@ export default function ProjectDetailsPage() {
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search indexed chunks in this project"
           />
-          <button type="submit" className="button-primary" disabled={isSearching || !searchQuery.trim()}>
-            {isSearching ? "Searching..." : "Search"}
+          <button
+            type="submit"
+            className="button-primary"
+            disabled={isSearching || !searchQuery.trim() || !retrievalReadiness.isReady}
+          >
+            {isSearching ? "Searching..." : retrievalReadiness.isReady ? "Search" : "Index documents first"}
           </button>
         </form>
 
@@ -331,6 +363,11 @@ export default function ProjectDetailsPage() {
       <section className="card search-panel">
         <h2>Ask (Grounded Answer v1)</h2>
         <p className="subtle">Single-turn Q&A generated strictly from reranked retrieval context.</p>
+        {!retrievalReadiness.isReady ? (
+          <p className="subtle">
+            Ask is blocked until at least one document reaches indexed status.
+          </p>
+        ) : null}
 
         <form className="search-form" onSubmit={handleAsk}>
           <input
@@ -338,8 +375,12 @@ export default function ProjectDetailsPage() {
             onChange={(event) => setAskQuery(event.target.value)}
             placeholder="Ask a question about indexed project documents"
           />
-          <button type="submit" className="button-primary" disabled={isAsking || !askQuery.trim()}>
-            {isAsking ? "Asking..." : "Ask"}
+          <button
+            type="submit"
+            className="button-primary"
+            disabled={isAsking || !askQuery.trim() || !retrievalReadiness.isReady}
+          >
+            {isAsking ? "Asking..." : retrievalReadiness.isReady ? "Ask" : "Index documents first"}
           </button>
         </form>
 
