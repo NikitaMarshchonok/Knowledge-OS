@@ -6,7 +6,7 @@ import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 
 import { DocumentsTable } from "@/components/documents-table";
 import { ApiError, api } from "@/lib/api";
-import { AskResponse, AskRun, DocumentRecord, ProjectDetail, QAMetrics, SearchResult } from "@/lib/types";
+import { AskResponse, AskRun, DocumentRecord, ProjectDetail, QAMetrics, SearchDebugInfo, SearchResult } from "@/lib/types";
 
 function hasInFlightDocuments(documents: DocumentRecord[]): boolean {
   return documents.some(
@@ -42,6 +42,7 @@ export default function ProjectDetailsPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchDebug, setSearchDebug] = useState<SearchDebugInfo | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [askQuery, setAskQuery] = useState("");
@@ -207,12 +208,15 @@ export default function ProjectDetailsPage() {
       const response = await api.search({
         query: searchQuery.trim(),
         project_id: projectId,
-        top_k: 8
+        top_k: 8,
+        debug: true
       });
       setSearchResults(response.results);
+      setSearchDebug(response.debug);
     } catch (err) {
       setSearchError(err instanceof ApiError ? err.message : "Search request failed");
       setSearchResults([]);
+      setSearchDebug(null);
     } finally {
       setIsSearching(false);
     }
@@ -358,6 +362,26 @@ export default function ProjectDetailsPage() {
             </article>
           ))}
         </div>
+
+        {searchDebug ? (
+          <article className="search-result-card">
+            <div className="search-result-head">
+              <strong>Search debug</strong>
+            </div>
+            <p className="subtle">
+              pre-rerank candidates: {searchDebug.pre_rerank_chunk_ids.length} | post-rerank results:{" "}
+              {searchDebug.post_rerank_chunk_ids.length}
+            </p>
+            <p className="subtle">
+              pre: {searchDebug.pre_rerank_chunk_ids.slice(0, 8).join(", ")}
+              {searchDebug.pre_rerank_chunk_ids.length > 8 ? " ..." : ""}
+            </p>
+            <p className="subtle">
+              post: {searchDebug.post_rerank_chunk_ids.slice(0, 8).join(", ")}
+              {searchDebug.post_rerank_chunk_ids.length > 8 ? " ..." : ""}
+            </p>
+          </article>
+        ) : null}
       </section>
 
       <section className="card search-panel">
