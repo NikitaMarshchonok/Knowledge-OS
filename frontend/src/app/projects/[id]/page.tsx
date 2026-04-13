@@ -499,13 +499,33 @@ export default function ProjectDetailsPage() {
         {evaluationError ? <p className="error-banner">{evaluationError}</p> : null}
 
         {qaMetrics ? (
-          <p className="subtle">
-            total {qaMetrics.total_questions} | success {qaMetrics.success_count} | failed {qaMetrics.failed_count} |
-            insufficient {qaMetrics.insufficient_evidence_count} | avg latency {qaMetrics.average_latency_ms.toFixed(0)}ms |
-            p50 {qaMetrics.latency_p50_ms.toFixed(0)}ms | p95 {qaMetrics.latency_p95_ms.toFixed(0)}ms | feedback{" "}
-            {(qaMetrics.feedback_rate * 100).toFixed(0)}% | 👍 {qaMetrics.positive_feedback_count} | 👎{" "}
-            {qaMetrics.negative_feedback_count}
-          </p>
+          <div>
+            <p className="subtle">
+              total {qaMetrics.total_questions} | success {qaMetrics.success_count} | failed {qaMetrics.failed_count} |
+              insufficient {qaMetrics.insufficient_evidence_count} | avg latency {qaMetrics.average_latency_ms.toFixed(0)}
+              ms | p50 {qaMetrics.latency_p50_ms.toFixed(0)}ms | p95 {qaMetrics.latency_p95_ms.toFixed(0)}ms | feedback{" "}
+              {(qaMetrics.feedback_rate * 100).toFixed(0)}% | 👍 {qaMetrics.positive_feedback_count} | 👎{" "}
+              {qaMetrics.negative_feedback_count}
+            </p>
+            <p className="subtle">
+              top insufficient reason: {qaMetrics.top_insufficient_evidence_reason || "n/a"} | top failure reason:{" "}
+              {qaMetrics.top_failure_reason || "n/a"}
+            </p>
+            <p className="subtle">
+              insufficient breakdown:{" "}
+              {Object.entries(qaMetrics.insufficient_evidence_reasons)
+                .slice(0, 4)
+                .map(([reason, count]) => `${reason} (${count})`)
+                .join(" | ") || "n/a"}
+            </p>
+            <p className="subtle">
+              failure breakdown:{" "}
+              {Object.entries(qaMetrics.failure_reasons)
+                .slice(0, 4)
+                .map(([reason, count]) => `${reason} (${count})`)
+                .join(" | ") || "n/a"}
+            </p>
+          </div>
         ) : null}
 
         {isLoadingAskRuns ? (

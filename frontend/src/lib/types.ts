@@ -158,6 +158,10 @@ export interface QAMetrics {
   negative_feedback_count: number;
   feedback_count: number;
   feedback_rate: number;
+  insufficient_evidence_reasons: Record<string, number>;
+  failure_reasons: Record<string, number>;
+  top_insufficient_evidence_reason: string | null;
+  top_failure_reason: string | null;
 }
 
 export interface ProjectDetail extends Project {

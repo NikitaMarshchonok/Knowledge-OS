@@ -13,3 +13,7 @@ class QAMetricsResponse(BaseModel):
     negative_feedback_count: int
     feedback_count: int
     feedback_rate: float
+    insufficient_evidence_reasons: dict[str, int]
+    failure_reasons: dict[str, int]
+    top_insufficient_evidence_reason: str | None = None
+    top_failure_reason: str | None = None

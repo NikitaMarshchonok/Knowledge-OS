@@ -154,6 +154,10 @@ Response fields:
 - `negative_feedback_count`
 - `feedback_count`
 - `feedback_rate`
+- `insufficient_evidence_reasons`
+- `failure_reasons`
+- `top_insufficient_evidence_reason`
+- `top_failure_reason`
 
 ## Retrieval + reranking pipeline
 
