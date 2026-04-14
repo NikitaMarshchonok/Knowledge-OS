@@ -31,6 +31,34 @@ function getRetrievalReadiness(documents: DocumentRecord[]) {
   };
 }
 
+function getQualityGateSummary(metrics: QAMetrics) {
+  if (metrics.total_questions < 5) {
+    return { level: "warming_up", label: "Warming up", note: "Collect more asks for stable quality signal." };
+  }
+
+  const failRate = metrics.total_questions > 0 ? metrics.failed_count / metrics.total_questions : 0;
+  const insufficientRate = metrics.total_questions > 0 ? metrics.insufficient_evidence_count / metrics.total_questions : 0;
+  const feedbackRate = metrics.feedback_rate;
+
+  if (failRate >= 0.15 || insufficientRate >= 0.35) {
+    return {
+      level: "critical",
+      label: "Critical",
+      note: "High failure/insufficient rate. Improve indexing coverage and retrieval quality."
+    };
+  }
+
+  if (failRate >= 0.08 || insufficientRate >= 0.2 || feedbackRate < 0.2) {
+    return {
+      level: "warning",
+      label: "Warning",
+      note: "Quality is mixed. Review refusal reasons and collect more feedback."
+    };
+  }
+
+  return { level: "good", label: "Good", note: "Quality is stable with acceptable failure/refusal behavior." };
+}
+
 export default function ProjectDetailsPage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id;
@@ -62,6 +90,7 @@ export default function ProjectDetailsPage() {
   const documents = project?.documents || [];
   const shouldPoll = hasInFlightDocuments(documents);
   const retrievalReadiness = getRetrievalReadiness(documents);
+  const qualityGate = qaMetrics ? getQualityGateSummary(qaMetrics) : null;
 
   const loadProject = async (id: string, options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
@@ -500,6 +529,9 @@ export default function ProjectDetailsPage() {
 
         {qaMetrics ? (
           <div>
+            <p className="subtle">
+              quality gate: {qualityGate?.label} | {qualityGate?.note}
+            </p>
             <p className="subtle">
               total {qaMetrics.total_questions} | success {qaMetrics.success_count} | failed {qaMetrics.failed_count} |
               insufficient {qaMetrics.insufficient_evidence_count} | avg latency {qaMetrics.average_latency_ms.toFixed(0)}
