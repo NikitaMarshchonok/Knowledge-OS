@@ -364,6 +364,10 @@ export default function ProjectDetailsPage() {
     askRunSort === "problematic" && askRunStatusFilter === "all" && askRunReasonFilter === "all";
   const isFailuresPresetActive =
     askRunSort === "problematic" && askRunStatusFilter === "failed" && askRunReasonFilter === "all";
+  const isInsufficientPresetActive =
+    askRunSort === "problematic" &&
+    askRunStatusFilter === "insufficient_evidence" &&
+    askRunReasonFilter === "all";
 
   return (
     <main className="page">
@@ -421,6 +425,22 @@ export default function ProjectDetailsPage() {
             }
           >
             show failures only
+          </button>
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={isLoadingAskRuns || !projectId || isInsufficientPresetActive}
+            onClick={() =>
+              projectId &&
+              void loadEvaluation(projectId, {
+                limit: 10,
+                status: "insufficient_evidence",
+                reason: "all",
+                sort: "problematic"
+              })
+            }
+          >
+            show insufficient only
           </button>
           <button
             type="button"
