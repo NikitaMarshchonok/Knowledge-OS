@@ -362,6 +362,8 @@ export default function ProjectDetailsPage() {
     : [];
   const isProblematicPresetActive =
     askRunSort === "problematic" && askRunStatusFilter === "all" && askRunReasonFilter === "all";
+  const isFailuresPresetActive =
+    askRunSort === "problematic" && askRunStatusFilter === "failed" && askRunReasonFilter === "all";
 
   return (
     <main className="page">
@@ -403,6 +405,22 @@ export default function ProjectDetailsPage() {
             }
           >
             show problematic
+          </button>
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={isLoadingAskRuns || !projectId || isFailuresPresetActive}
+            onClick={() =>
+              projectId &&
+              void loadEvaluation(projectId, {
+                limit: 10,
+                status: "failed",
+                reason: "all",
+                sort: "problematic"
+              })
+            }
+          >
+            show failures only
           </button>
           <button
             type="button"
