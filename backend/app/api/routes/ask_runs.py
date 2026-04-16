@@ -18,6 +18,7 @@ def list_ask_runs(
     limit: int = Query(20, ge=1, le=100),
     project_id: UUID | None = None,
     status_filter: AskRunStatus | None = Query(default=None, alias="status"),
+    error_reason: str | None = Query(default=None, min_length=1),
     db: Session = Depends(get_db),
 ):
     total, items = service.list_ask_runs(
@@ -26,6 +27,7 @@ def list_ask_runs(
         limit=limit,
         project_id=project_id,
         status=status_filter,
+        error_reason=error_reason,
     )
     return AskRunListResponse(total=total, offset=offset, limit=limit, items=items)
 

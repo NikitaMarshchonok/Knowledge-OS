@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import AskRun, AskRunCitation, AskRunFeedback, AskRunStatus, FeedbackRating
@@ -89,12 +90,20 @@ class EvaluationService:
         limit: int,
         project_id: UUID | None = None,
         status: AskRunStatus | None = None,
+        error_reason: str | None = None,
     ) -> tuple[int, list[AskRun]]:
         query = db.query(AskRun)
         if project_id is not None:
             query = query.filter(AskRun.project_id == project_id)
         if status is not None:
             query = query.filter(AskRun.status == status)
+        if error_reason:
+            query = query.filter(
+                or_(
+                    AskRun.error_message.ilike(f"%:{error_reason}"),
+                    AskRun.error_message.ilike(f"{error_reason}%"),
+                )
+            )
 
         total = query.count()
         items = (

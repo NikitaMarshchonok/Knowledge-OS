@@ -91,6 +91,7 @@ export default function ProjectDetailsPage() {
   const [askRunsTotal, setAskRunsTotal] = useState(0);
   const [askRunsLimit, setAskRunsLimit] = useState(10);
   const [askRunStatusFilter, setAskRunStatusFilter] = useState<"all" | AskRunStatus>("all");
+  const [askRunReasonFilter, setAskRunReasonFilter] = useState("all");
   const [isLoadingAskRuns, setIsLoadingAskRuns] = useState(false);
   const [selectedAskRun, setSelectedAskRun] = useState<AskRun | null>(null);
   const [isSubmittingFeedbackId, setIsSubmittingFeedbackId] = useState<string | null>(null);
@@ -127,9 +128,10 @@ export default function ProjectDetailsPage() {
   };
 
   const loadEvaluation = useCallback(
-    async (id: string, options?: { limit?: number; status?: "all" | AskRunStatus }) => {
+    async (id: string, options?: { limit?: number; status?: "all" | AskRunStatus; reason?: string }) => {
       const nextLimit = options?.limit ?? askRunsLimit;
       const nextStatus = options?.status ?? askRunStatusFilter;
+      const nextReason = options?.reason ?? askRunReasonFilter;
       try {
         setIsLoadingAskRuns(true);
         setEvaluationError(null);
@@ -137,7 +139,8 @@ export default function ProjectDetailsPage() {
           api.listAskRuns({
             project_id: id,
             limit: nextLimit,
-            status: nextStatus === "all" ? undefined : nextStatus
+            status: nextStatus === "all" ? undefined : nextStatus,
+            error_reason: nextReason === "all" ? undefined : nextReason
           }),
           api.getQAMetrics(id)
         ]);
@@ -145,6 +148,7 @@ export default function ProjectDetailsPage() {
         setAskRunsTotal(runsResponse.total);
         setAskRunsLimit(nextLimit);
         setAskRunStatusFilter(nextStatus);
+        setAskRunReasonFilter(nextReason);
         setQaMetrics(metricsResponse);
       } catch (err) {
         setEvaluationError(err instanceof ApiError ? err.message : "Failed to load evaluation data");
@@ -152,7 +156,7 @@ export default function ProjectDetailsPage() {
         setIsLoadingAskRuns(false);
       }
     },
-    [askRunsLimit, askRunStatusFilter]
+    [askRunsLimit, askRunReasonFilter, askRunStatusFilter]
   );
 
   const openAskRunDetails = async (askRunId: string) => {
@@ -171,7 +175,7 @@ export default function ProjectDetailsPage() {
       setEvaluationError(null);
       await api.submitAskRunFeedback(askRunId, { rating });
       if (projectId) {
-        await loadEvaluation(projectId, { limit: askRunsLimit, status: askRunStatusFilter });
+        await loadEvaluation(projectId, { limit: askRunsLimit, status: askRunStatusFilter, reason: askRunReasonFilter });
       }
       if (selectedAskRun?.id === askRunId) {
         const details = await api.getAskRun(askRunId);
@@ -292,7 +296,11 @@ export default function ProjectDetailsPage() {
       });
       setAskResponse(response);
       setExpandedCitationKeys({});
-      await loadEvaluation(projectId, { limit: askRunsLimit, status: askRunStatusFilter });
+      await loadEvaluation(projectId, {
+        limit: askRunsLimit,
+        status: askRunStatusFilter,
+        reason: askRunReasonFilter
+      });
     } catch (err) {
       setAskError(err instanceof ApiError ? err.message : "Ask request failed");
       setAskResponse(null);
@@ -307,6 +315,10 @@ export default function ProjectDetailsPage() {
       [citationKey]: !prev[citationKey]
     }));
   };
+
+  const reasonOptions = qaMetrics
+    ? Array.from(new Set([...Object.keys(qaMetrics.insufficient_evidence_reasons), ...Object.keys(qaMetrics.failure_reasons)]))
+    : [];
 
   return (
     <main className="page">
@@ -589,7 +601,7 @@ export default function ProjectDetailsPage() {
             type="button"
             className="button-secondary"
             disabled={isLoadingAskRuns || !projectId || askRunStatusFilter === "all"}
-            onClick={() => projectId && void loadEvaluation(projectId, { limit: 10, status: "all" })}
+            onClick={() => projectId && void loadEvaluation(projectId, { limit: 10, status: "all", reason: askRunReasonFilter })}
           >
             all
           </button>
@@ -597,7 +609,9 @@ export default function ProjectDetailsPage() {
             type="button"
             className="button-secondary"
             disabled={isLoadingAskRuns || !projectId || askRunStatusFilter === "success"}
-            onClick={() => projectId && void loadEvaluation(projectId, { limit: 10, status: "success" })}
+            onClick={() =>
+              projectId && void loadEvaluation(projectId, { limit: 10, status: "success", reason: askRunReasonFilter })
+            }
           >
             success
           </button>
@@ -605,7 +619,9 @@ export default function ProjectDetailsPage() {
             type="button"
             className="button-secondary"
             disabled={isLoadingAskRuns || !projectId || askRunStatusFilter === "failed"}
-            onClick={() => projectId && void loadEvaluation(projectId, { limit: 10, status: "failed" })}
+            onClick={() =>
+              projectId && void loadEvaluation(projectId, { limit: 10, status: "failed", reason: askRunReasonFilter })
+            }
           >
             failed
           </button>
@@ -613,10 +629,30 @@ export default function ProjectDetailsPage() {
             type="button"
             className="button-secondary"
             disabled={isLoadingAskRuns || !projectId || askRunStatusFilter === "insufficient_evidence"}
-            onClick={() => projectId && void loadEvaluation(projectId, { limit: 10, status: "insufficient_evidence" })}
+            onClick={() =>
+              projectId &&
+              void loadEvaluation(projectId, { limit: 10, status: "insufficient_evidence", reason: askRunReasonFilter })
+            }
           >
             insufficient
           </button>
+          <select
+            value={askRunReasonFilter}
+            onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+              const nextReason = event.target.value;
+              if (projectId) {
+                void loadEvaluation(projectId, { limit: 10, status: askRunStatusFilter, reason: nextReason });
+              }
+            }}
+            disabled={isLoadingAskRuns || !projectId}
+          >
+            <option value="all">all reasons</option>
+            {reasonOptions.map((reason) => (
+              <option key={reason} value={reason}>
+                {reason}
+              </option>
+            ))}
+          </select>
           <span className="subtle">
             showing {askRuns.length} of {askRunsTotal}
           </span>
@@ -675,7 +711,14 @@ export default function ProjectDetailsPage() {
               type="button"
               className="button-secondary"
               disabled={isLoadingAskRuns || !projectId}
-              onClick={() => projectId && void loadEvaluation(projectId, { limit: askRunsLimit + 10 })}
+              onClick={() =>
+                projectId &&
+                void loadEvaluation(projectId, {
+                  limit: askRunsLimit + 10,
+                  status: askRunStatusFilter,
+                  reason: askRunReasonFilter
+                })
+              }
             >
               Load more
             </button>

@@ -102,6 +102,7 @@ export const api = {
     limit?: number;
     project_id?: string;
     status?: "success" | "failed" | "insufficient_evidence";
+    error_reason?: string;
   }) => {
     const search = new URLSearchParams();
     if (params?.offset !== undefined) {
@@ -115,6 +116,9 @@ export const api = {
     }
     if (params?.status) {
       search.set("status", params.status);
+    }
+    if (params?.error_reason) {
+      search.set("error_reason", params.error_reason);
     }
     const query = search.toString();
     return request<AskRunListResponse>(`/ask-runs${query ? `?${query}` : ""}`);

@@ -125,6 +125,7 @@ Response fields:
 - `limit` (default 20, max 100)
 - optional `project_id`
 - optional `status` (`success | failed | insufficient_evidence`)
+- optional `error_reason` (e.g. `no_results`, `low_top_vector_score`)
 
 `GET /ask-runs/{id}` returns full ask run details including:
 
