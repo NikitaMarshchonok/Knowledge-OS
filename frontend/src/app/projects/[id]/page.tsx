@@ -360,6 +360,8 @@ export default function ProjectDetailsPage() {
   const reasonOptions = qaMetrics
     ? Array.from(new Set([...Object.keys(qaMetrics.insufficient_evidence_reasons), ...Object.keys(qaMetrics.failure_reasons)]))
     : [];
+  const isProblematicPresetActive =
+    askRunSort === "problematic" && askRunStatusFilter === "all" && askRunReasonFilter === "all";
 
   return (
     <main className="page">
@@ -386,6 +388,22 @@ export default function ProjectDetailsPage() {
           <input type="file" onChange={handleFileChange} disabled={isUploading || isLoading} />
         </label>
         <div className="inline-actions">
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={isLoadingAskRuns || !projectId || isProblematicPresetActive}
+            onClick={() =>
+              projectId &&
+              void loadEvaluation(projectId, {
+                limit: 10,
+                status: "all",
+                reason: "all",
+                sort: "problematic"
+              })
+            }
+          >
+            show problematic
+          </button>
           <button
             type="button"
             className="button-secondary"
