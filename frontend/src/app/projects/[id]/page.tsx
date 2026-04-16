@@ -120,6 +120,7 @@ export default function ProjectDetailsPage() {
   const [askRunsLimit, setAskRunsLimit] = useState(10);
   const [askRunStatusFilter, setAskRunStatusFilter] = useState<"all" | AskRunStatus>("all");
   const [askRunReasonFilter, setAskRunReasonFilter] = useState("all");
+  const [askRunSort, setAskRunSort] = useState<"recent" | "problematic">("recent");
   const [isLoadingAskRuns, setIsLoadingAskRuns] = useState(false);
   const [selectedAskRun, setSelectedAskRun] = useState<AskRun | null>(null);
   const [isSubmittingFeedbackId, setIsSubmittingFeedbackId] = useState<string | null>(null);
@@ -156,10 +157,14 @@ export default function ProjectDetailsPage() {
   };
 
   const loadEvaluation = useCallback(
-    async (id: string, options?: { limit?: number; status?: "all" | AskRunStatus; reason?: string }) => {
+    async (
+      id: string,
+      options?: { limit?: number; status?: "all" | AskRunStatus; reason?: string; sort?: "recent" | "problematic" }
+    ) => {
       const nextLimit = options?.limit ?? askRunsLimit;
       const nextStatus = options?.status ?? askRunStatusFilter;
       const nextReason = options?.reason ?? askRunReasonFilter;
+      const nextSort = options?.sort ?? askRunSort;
       try {
         setIsLoadingAskRuns(true);
         setEvaluationError(null);
@@ -168,7 +173,8 @@ export default function ProjectDetailsPage() {
             project_id: id,
             limit: nextLimit,
             status: nextStatus === "all" ? undefined : nextStatus,
-            error_reason: nextReason === "all" ? undefined : nextReason
+            error_reason: nextReason === "all" ? undefined : nextReason,
+            sort: nextSort
           }),
           api.getQAMetrics(id)
         ]);
@@ -177,6 +183,7 @@ export default function ProjectDetailsPage() {
         setAskRunsLimit(nextLimit);
         setAskRunStatusFilter(nextStatus);
         setAskRunReasonFilter(nextReason);
+        setAskRunSort(nextSort);
         setQaMetrics(metricsResponse);
       } catch (err) {
         setEvaluationError(err instanceof ApiError ? err.message : "Failed to load evaluation data");
@@ -184,7 +191,7 @@ export default function ProjectDetailsPage() {
         setIsLoadingAskRuns(false);
       }
     },
-    [askRunsLimit, askRunReasonFilter, askRunStatusFilter]
+    [askRunReasonFilter, askRunSort, askRunStatusFilter, askRunsLimit]
   );
 
   const openAskRunDetails = async (askRunId: string) => {
@@ -203,7 +210,12 @@ export default function ProjectDetailsPage() {
       setEvaluationError(null);
       await api.submitAskRunFeedback(askRunId, { rating });
       if (projectId) {
-        await loadEvaluation(projectId, { limit: askRunsLimit, status: askRunStatusFilter, reason: askRunReasonFilter });
+        await loadEvaluation(projectId, {
+          limit: askRunsLimit,
+          status: askRunStatusFilter,
+          reason: askRunReasonFilter,
+          sort: askRunSort
+        });
       }
       if (selectedAskRun?.id === askRunId) {
         const details = await api.getAskRun(askRunId);
@@ -327,7 +339,8 @@ export default function ProjectDetailsPage() {
       await loadEvaluation(projectId, {
         limit: askRunsLimit,
         status: askRunStatusFilter,
-        reason: askRunReasonFilter
+        reason: askRunReasonFilter,
+        sort: askRunSort
       });
     } catch (err) {
       setAskError(err instanceof ApiError ? err.message : "Ask request failed");
@@ -629,7 +642,9 @@ export default function ProjectDetailsPage() {
             type="button"
             className="button-secondary"
             disabled={isLoadingAskRuns || !projectId || askRunStatusFilter === "all"}
-            onClick={() => projectId && void loadEvaluation(projectId, { limit: 10, status: "all", reason: askRunReasonFilter })}
+            onClick={() =>
+              projectId && void loadEvaluation(projectId, { limit: 10, status: "all", reason: askRunReasonFilter, sort: askRunSort })
+            }
           >
             all
           </button>
@@ -638,7 +653,8 @@ export default function ProjectDetailsPage() {
             className="button-secondary"
             disabled={isLoadingAskRuns || !projectId || askRunStatusFilter === "success"}
             onClick={() =>
-              projectId && void loadEvaluation(projectId, { limit: 10, status: "success", reason: askRunReasonFilter })
+              projectId &&
+              void loadEvaluation(projectId, { limit: 10, status: "success", reason: askRunReasonFilter, sort: askRunSort })
             }
           >
             success
@@ -648,7 +664,8 @@ export default function ProjectDetailsPage() {
             className="button-secondary"
             disabled={isLoadingAskRuns || !projectId || askRunStatusFilter === "failed"}
             onClick={() =>
-              projectId && void loadEvaluation(projectId, { limit: 10, status: "failed", reason: askRunReasonFilter })
+              projectId &&
+              void loadEvaluation(projectId, { limit: 10, status: "failed", reason: askRunReasonFilter, sort: askRunSort })
             }
           >
             failed
@@ -659,17 +676,45 @@ export default function ProjectDetailsPage() {
             disabled={isLoadingAskRuns || !projectId || askRunStatusFilter === "insufficient_evidence"}
             onClick={() =>
               projectId &&
-              void loadEvaluation(projectId, { limit: 10, status: "insufficient_evidence", reason: askRunReasonFilter })
+              void loadEvaluation(projectId, {
+                limit: 10,
+                status: "insufficient_evidence",
+                reason: askRunReasonFilter,
+                sort: askRunSort
+              })
             }
           >
             insufficient
           </button>
           <select
+            value={askRunSort}
+            onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+              const nextSort = event.target.value as "recent" | "problematic";
+              if (projectId) {
+                void loadEvaluation(projectId, {
+                  limit: 10,
+                  status: askRunStatusFilter,
+                  reason: askRunReasonFilter,
+                  sort: nextSort
+                });
+              }
+            }}
+            disabled={isLoadingAskRuns || !projectId}
+          >
+            <option value="recent">recent first</option>
+            <option value="problematic">problematic first</option>
+          </select>
+          <select
             value={askRunReasonFilter}
             onChange={(event: ChangeEvent<HTMLSelectElement>) => {
               const nextReason = event.target.value;
               if (projectId) {
-                void loadEvaluation(projectId, { limit: 10, status: askRunStatusFilter, reason: nextReason });
+                void loadEvaluation(projectId, {
+                  limit: 10,
+                  status: askRunStatusFilter,
+                  reason: nextReason,
+                  sort: askRunSort
+                });
               }
             }}
             disabled={isLoadingAskRuns || !projectId}
@@ -754,7 +799,8 @@ export default function ProjectDetailsPage() {
                 void loadEvaluation(projectId, {
                   limit: askRunsLimit + 10,
                   status: askRunStatusFilter,
-                  reason: askRunReasonFilter
+                  reason: askRunReasonFilter,
+                  sort: askRunSort
                 })
               }
             >

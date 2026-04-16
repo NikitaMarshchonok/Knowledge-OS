@@ -1,4 +1,5 @@
 from uuid import UUID
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -19,6 +20,7 @@ def list_ask_runs(
     project_id: UUID | None = None,
     status_filter: AskRunStatus | None = Query(default=None, alias="status"),
     error_reason: str | None = Query(default=None, min_length=1),
+    sort: Literal["recent", "problematic"] = Query(default="recent"),
     db: Session = Depends(get_db),
 ):
     total, items = service.list_ask_runs(
@@ -28,6 +30,7 @@ def list_ask_runs(
         project_id=project_id,
         status=status_filter,
         error_reason=error_reason,
+        sort=sort,
     )
     return AskRunListResponse(total=total, offset=offset, limit=limit, items=items)
 

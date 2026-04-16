@@ -1,7 +1,8 @@
 from uuid import UUID
+from typing import Literal
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import or_
+from sqlalchemy import case, or_
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import AskRun, AskRunCitation, AskRunFeedback, AskRunStatus, FeedbackRating
@@ -91,6 +92,7 @@ class EvaluationService:
         project_id: UUID | None = None,
         status: AskRunStatus | None = None,
         error_reason: str | None = None,
+        sort: Literal["recent", "problematic"] = "recent",
     ) -> tuple[int, list[AskRun]]:
         query = db.query(AskRun)
         if project_id is not None:
@@ -105,10 +107,41 @@ class EvaluationService:
                 )
             )
 
+        if sort == "problematic":
+            status_priority = case(
+                (AskRun.status == AskRunStatus.failed, 0),
+                (AskRun.status == AskRunStatus.insufficient_evidence, 1),
+                else_=2,
+            )
+            reason_priority = case(
+                (
+                    or_(
+                        AskRun.error_message.ilike("%llm_error%"),
+                        AskRun.error_message.ilike("%provider_error%"),
+                        AskRun.error_message.ilike("%timeout%"),
+                        AskRun.error_message.ilike("%exception%"),
+                    ),
+                    0,
+                ),
+                (
+                    or_(
+                        AskRun.error_message.ilike("%insufficient%"),
+                        AskRun.error_message.ilike("%low_top_vector_score%"),
+                        AskRun.error_message.ilike("%low_top_rerank_score%"),
+                        AskRun.error_message.ilike("%not_enough_results%"),
+                    ),
+                    1,
+                ),
+                else_=2,
+            )
+            order_by = (status_priority.asc(), reason_priority.asc(), AskRun.created_at.desc())
+        else:
+            order_by = (AskRun.created_at.desc(),)
+
         total = query.count()
         items = (
             query.options(selectinload(AskRun.citations), selectinload(AskRun.feedback))
-            .order_by(AskRun.created_at.desc())
+            .order_by(*order_by)
             .offset(offset)
             .limit(limit)
             .all()
