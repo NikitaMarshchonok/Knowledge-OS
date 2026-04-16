@@ -45,3 +45,13 @@ class AskRun(Base):
     project = relationship("Project")
     citations = relationship("AskRunCitation", back_populates="ask_run", cascade="all, delete-orphan")
     feedback = relationship("AskRunFeedback", back_populates="ask_run", uselist=False, cascade="all, delete-orphan")
+
+    @property
+    def error_reason(self) -> str | None:
+        if not self.error_message:
+            return None
+        if ":" in self.error_message:
+            _, reason = self.error_message.split(":", 1)
+            cleaned = reason.strip()
+            return cleaned or None
+        return self.error_message.strip() or None

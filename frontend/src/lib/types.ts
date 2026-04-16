@@ -130,6 +130,7 @@ export interface AskRun {
   latency_ms: number | null;
   top_k: number;
   error_message: string | null;
+  error_reason: string | null;
   retrieved_chunk_ids: string[] | null;
   reranked_chunk_ids: string[] | null;
   cited_chunk_ids: string[] | null;

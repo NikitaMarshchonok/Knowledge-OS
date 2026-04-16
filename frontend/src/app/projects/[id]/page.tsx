@@ -68,6 +68,34 @@ function getQualityGateSummary(metrics: QAMetrics) {
   return { level: "good", label: "Good", note: "Quality is stable with acceptable failure/refusal behavior." };
 }
 
+function getAskRunStatusLabel(status: AskRunStatus): string {
+  if (status === "insufficient_evidence") {
+    return "insufficient";
+  }
+  return status;
+}
+
+function getAskRunReasonTone(reason: string): "critical" | "warning" | "neutral" {
+  const normalized = reason.toLowerCase();
+  if (
+    normalized.includes("llm_error") ||
+    normalized.includes("provider_error") ||
+    normalized.includes("timeout") ||
+    normalized.includes("exception")
+  ) {
+    return "critical";
+  }
+  if (
+    normalized.includes("insufficient") ||
+    normalized.includes("low_top_vector_score") ||
+    normalized.includes("low_top_rerank_score") ||
+    normalized.includes("not_enough_results")
+  ) {
+    return "warning";
+  }
+  return "neutral";
+}
+
 export default function ProjectDetailsPage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id;
@@ -668,11 +696,21 @@ export default function ProjectDetailsPage() {
               <article key={run.id} className="search-result-card">
                 <div className="search-result-head">
                   <strong>{run.query}</strong>
-                  <span className="subtle">{run.status}</span>
+                  <span className={`status status-ask-${run.status}`}>
+                    {getAskRunStatusLabel(run.status)}
+                  </span>
                 </div>
                 <p className="subtle">
                   {new Date(run.created_at).toLocaleString()} | latency {run.latency_ms ?? "n/a"}ms | top_k {run.top_k}
                 </p>
+                {run.error_reason ? (
+                  <p className="subtle">
+                    reason:{" "}
+                    <span className={`reason-chip reason-chip-${getAskRunReasonTone(run.error_reason)}`}>
+                      {run.error_reason}
+                    </span>
+                  </p>
+                ) : null}
                 <p className="search-content">{(run.answer || run.error_message || "").slice(0, 220)}</p>
                 <div className="inline-actions">
                   <button
@@ -729,13 +767,24 @@ export default function ProjectDetailsPage() {
           <article className="search-result-card" style={{ marginTop: "1rem" }}>
             <div className="search-result-head">
               <strong>Ask Run Details</strong>
-              <span className="subtle">{selectedAskRun.id}</span>
+              <span className={`status status-ask-${selectedAskRun.status}`}>
+                {getAskRunStatusLabel(selectedAskRun.status)}
+              </span>
             </div>
+            <p className="subtle">{selectedAskRun.id}</p>
             <p className="subtle">
               model {selectedAskRun.llm_model || "n/a"} | embedding {selectedAskRun.embedding_model || "n/a"} | rerank{" "}
               {selectedAskRun.rerank_model || "n/a"}
             </p>
             <p className="search-content">{selectedAskRun.answer || selectedAskRun.error_message || "No answer captured."}</p>
+            {selectedAskRun.error_reason ? (
+              <p className="subtle">
+                reason:{" "}
+                <span className={`reason-chip reason-chip-${getAskRunReasonTone(selectedAskRun.error_reason)}`}>
+                  {selectedAskRun.error_reason}
+                </span>
+              </p>
+            ) : null}
             <p className="subtle">
               retrieved {selectedAskRun.retrieved_chunk_ids?.length || 0} | reranked{" "}
               {selectedAskRun.reranked_chunk_ids?.length || 0} | cited {selectedAskRun.cited_chunk_ids?.length || 0}

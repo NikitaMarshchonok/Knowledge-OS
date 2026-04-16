@@ -284,6 +284,44 @@ td {
   color: #ff7b7b;
 }
 
+.status-ask-success {
+  background: rgba(96, 223, 173, 0.16);
+  color: #60dfad;
+}
+
+.status-ask-failed {
+  background: rgba(255, 123, 123, 0.16);
+  color: #ff7b7b;
+}
+
+.status-ask-insufficient_evidence {
+  background: rgba(255, 209, 102, 0.15);
+  color: #ffd166;
+}
+
+.reason-chip {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.reason-chip-critical {
+  background: rgba(255, 123, 123, 0.16);
+  color: #ff7b7b;
+}
+
+.reason-chip-warning {
+  background: rgba(255, 209, 102, 0.15);
+  color: #ffd166;
+}
+
+.reason-chip-neutral {
+  background: rgba(143, 176, 255, 0.14);
+  color: #9ebdff;
+}
+
 .error-inline {
   color: #ff9e9e;
   display: block;
