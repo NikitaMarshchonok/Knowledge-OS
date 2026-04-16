@@ -2,11 +2,20 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useState } from "react";
 
 import { DocumentsTable } from "@/components/documents-table";
 import { ApiError, api } from "@/lib/api";
-import { AskResponse, AskRun, DocumentRecord, ProjectDetail, QAMetrics, SearchDebugInfo, SearchResult } from "@/lib/types";
+import {
+  AskResponse,
+  AskRun,
+  AskRunStatus,
+  DocumentRecord,
+  ProjectDetail,
+  QAMetrics,
+  SearchDebugInfo,
+  SearchResult
+} from "@/lib/types";
 
 function hasInFlightDocuments(documents: DocumentRecord[]): boolean {
   return documents.some(
@@ -79,6 +88,9 @@ export default function ProjectDetailsPage() {
   const [askError, setAskError] = useState<string | null>(null);
   const [expandedCitationKeys, setExpandedCitationKeys] = useState<Record<string, boolean>>({});
   const [askRuns, setAskRuns] = useState<AskRun[]>([]);
+  const [askRunsTotal, setAskRunsTotal] = useState(0);
+  const [askRunsLimit, setAskRunsLimit] = useState(10);
+  const [askRunStatusFilter, setAskRunStatusFilter] = useState<"all" | AskRunStatus>("all");
   const [isLoadingAskRuns, setIsLoadingAskRuns] = useState(false);
   const [selectedAskRun, setSelectedAskRun] = useState<AskRun | null>(null);
   const [isSubmittingFeedbackId, setIsSubmittingFeedbackId] = useState<string | null>(null);
@@ -114,22 +126,34 @@ export default function ProjectDetailsPage() {
     }
   };
 
-  const loadEvaluation = async (id: string) => {
-    try {
-      setIsLoadingAskRuns(true);
-      setEvaluationError(null);
-      const [runsResponse, metricsResponse] = await Promise.all([
-        api.listAskRuns({ project_id: id, limit: 10 }),
-        api.getQAMetrics(id)
-      ]);
-      setAskRuns(runsResponse.items);
-      setQaMetrics(metricsResponse);
-    } catch (err) {
-      setEvaluationError(err instanceof ApiError ? err.message : "Failed to load evaluation data");
-    } finally {
-      setIsLoadingAskRuns(false);
-    }
-  };
+  const loadEvaluation = useCallback(
+    async (id: string, options?: { limit?: number; status?: "all" | AskRunStatus }) => {
+      const nextLimit = options?.limit ?? askRunsLimit;
+      const nextStatus = options?.status ?? askRunStatusFilter;
+      try {
+        setIsLoadingAskRuns(true);
+        setEvaluationError(null);
+        const [runsResponse, metricsResponse] = await Promise.all([
+          api.listAskRuns({
+            project_id: id,
+            limit: nextLimit,
+            status: nextStatus === "all" ? undefined : nextStatus
+          }),
+          api.getQAMetrics(id)
+        ]);
+        setAskRuns(runsResponse.items);
+        setAskRunsTotal(runsResponse.total);
+        setAskRunsLimit(nextLimit);
+        setAskRunStatusFilter(nextStatus);
+        setQaMetrics(metricsResponse);
+      } catch (err) {
+        setEvaluationError(err instanceof ApiError ? err.message : "Failed to load evaluation data");
+      } finally {
+        setIsLoadingAskRuns(false);
+      }
+    },
+    [askRunsLimit, askRunStatusFilter]
+  );
 
   const openAskRunDetails = async (askRunId: string) => {
     try {
@@ -147,7 +171,7 @@ export default function ProjectDetailsPage() {
       setEvaluationError(null);
       await api.submitAskRunFeedback(askRunId, { rating });
       if (projectId) {
-        await loadEvaluation(projectId);
+        await loadEvaluation(projectId, { limit: askRunsLimit, status: askRunStatusFilter });
       }
       if (selectedAskRun?.id === askRunId) {
         const details = await api.getAskRun(askRunId);
@@ -166,7 +190,7 @@ export default function ProjectDetailsPage() {
     }
     void loadProject(projectId);
     void loadEvaluation(projectId);
-  }, [projectId]);
+  }, [projectId, loadEvaluation]);
 
   useEffect(() => {
     if (!projectId || !shouldPoll) {
@@ -268,7 +292,7 @@ export default function ProjectDetailsPage() {
       });
       setAskResponse(response);
       setExpandedCitationKeys({});
-      await loadEvaluation(projectId);
+      await loadEvaluation(projectId, { limit: askRunsLimit, status: askRunStatusFilter });
     } catch (err) {
       setAskError(err instanceof ApiError ? err.message : "Ask request failed");
       setAskResponse(null);
@@ -560,6 +584,44 @@ export default function ProjectDetailsPage() {
           </div>
         ) : null}
 
+        <div className="inline-actions">
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={isLoadingAskRuns || !projectId || askRunStatusFilter === "all"}
+            onClick={() => projectId && void loadEvaluation(projectId, { limit: 10, status: "all" })}
+          >
+            all
+          </button>
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={isLoadingAskRuns || !projectId || askRunStatusFilter === "success"}
+            onClick={() => projectId && void loadEvaluation(projectId, { limit: 10, status: "success" })}
+          >
+            success
+          </button>
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={isLoadingAskRuns || !projectId || askRunStatusFilter === "failed"}
+            onClick={() => projectId && void loadEvaluation(projectId, { limit: 10, status: "failed" })}
+          >
+            failed
+          </button>
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={isLoadingAskRuns || !projectId || askRunStatusFilter === "insufficient_evidence"}
+            onClick={() => projectId && void loadEvaluation(projectId, { limit: 10, status: "insufficient_evidence" })}
+          >
+            insufficient
+          </button>
+          <span className="subtle">
+            showing {askRuns.length} of {askRunsTotal}
+          </span>
+        </div>
+
         {isLoadingAskRuns ? (
           <p className="subtle">Loading ask runs...</p>
         ) : askRuns.length === 0 ? (
@@ -606,6 +668,19 @@ export default function ProjectDetailsPage() {
             ))}
           </div>
         )}
+
+        {askRuns.length < askRunsTotal ? (
+          <div className="inline-actions">
+            <button
+              type="button"
+              className="button-secondary"
+              disabled={isLoadingAskRuns || !projectId}
+              onClick={() => projectId && void loadEvaluation(projectId, { limit: askRunsLimit + 10 })}
+            >
+              Load more
+            </button>
+          </div>
+        ) : null}
 
         {selectedAskRun ? (
           <article className="search-result-card" style={{ marginTop: "1rem" }}>
