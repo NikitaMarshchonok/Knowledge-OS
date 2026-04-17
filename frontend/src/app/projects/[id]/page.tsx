@@ -360,6 +360,7 @@ export default function ProjectDetailsPage() {
   const reasonOptions = qaMetrics
     ? Array.from(new Set([...Object.keys(qaMetrics.insufficient_evidence_reasons), ...Object.keys(qaMetrics.failure_reasons)]))
     : [];
+  const problematicCount = qaMetrics ? qaMetrics.failed_count + qaMetrics.insufficient_evidence_count : 0;
   const isProblematicPresetActive =
     askRunSort === "problematic" && askRunStatusFilter === "all" && askRunReasonFilter === "all";
   const isFailuresPresetActive =
@@ -410,6 +411,7 @@ export default function ProjectDetailsPage() {
           >
             show problematic
           </button>
+          {qaMetrics ? <span className="subtle">problematic: {problematicCount}</span> : null}
           <button
             type="button"
             className="button-secondary"
@@ -426,6 +428,7 @@ export default function ProjectDetailsPage() {
           >
             show failures only
           </button>
+          {qaMetrics ? <span className="subtle">failed: {qaMetrics.failed_count}</span> : null}
           <button
             type="button"
             className="button-secondary"
@@ -442,6 +445,7 @@ export default function ProjectDetailsPage() {
           >
             show insufficient only
           </button>
+          {qaMetrics ? <span className="subtle">insufficient: {qaMetrics.insufficient_evidence_count}</span> : null}
           <button
             type="button"
             className="button-secondary"
