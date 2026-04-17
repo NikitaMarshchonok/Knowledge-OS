@@ -16,6 +16,7 @@ Implemented:
 - Grounded answer generation v1 API with citations (`POST /ask`)
 - Evaluation layer v1 with ask run persistence, feedback, and QA metrics
 - Retrieval + Ask debug UI on project details page
+- Evaluation triage UX: status/reason filters, problematic-first sorting, and one-click presets
 
 Not implemented intentionally:
 
@@ -126,10 +127,12 @@ Response fields:
 - optional `project_id`
 - optional `status` (`success | failed | insufficient_evidence`)
 - optional `error_reason` (e.g. `no_results`, `low_top_vector_score`)
+- optional `sort` (`recent` default, `problematic` to prioritize failed/insufficient runs)
 
 `GET /ask-runs/{id}` returns full ask run details including:
 
 - debug trace fields (`retrieved_chunk_ids`, `reranked_chunk_ids`, `cited_chunk_ids`)
+- normalized `error_reason` (derived from `error_message` for easier filtering/triage)
 - stored `citations[]`
 - optional `feedback`
 
