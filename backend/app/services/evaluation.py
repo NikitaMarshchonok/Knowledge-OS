@@ -6,6 +6,7 @@ from sqlalchemy import case, or_
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.error_reason import normalize_reason_token
+from app.core.time_window import resolve_time_window_start
 from app.models import AskRun, AskRunCitation, AskRunFeedback, AskRunStatus, FeedbackRating
 from app.schemas.ask import Citation
 
@@ -94,10 +95,14 @@ class EvaluationService:
         status: AskRunStatus | None = None,
         error_reason: str | None = None,
         sort: Literal["recent", "problematic"] = "recent",
+        time_window: Literal["24h", "7d", "30d", "all"] = "all",
     ) -> tuple[int, list[AskRun]]:
         query = db.query(AskRun)
+        start_at = resolve_time_window_start(time_window)
         if project_id is not None:
             query = query.filter(AskRun.project_id == project_id)
+        if start_at is not None:
+            query = query.filter(AskRun.created_at >= start_at)
         if status is not None:
             query = query.filter(AskRun.status == status)
         if error_reason:

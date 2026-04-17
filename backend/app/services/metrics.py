@@ -1,19 +1,29 @@
 from collections import Counter
+from typing import Literal
 from uuid import UUID
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.error_reason import extract_error_reason
+from app.core.time_window import resolve_time_window_start
 from app.models import AskRun, AskRunFeedback, AskRunStatus, FeedbackRating
 from app.schemas.metrics import QAMetricsResponse
 
 
 class MetricsService:
-    def get_qa_metrics(self, db: Session, project_id: UUID | None = None) -> QAMetricsResponse:
+    def get_qa_metrics(
+        self,
+        db: Session,
+        project_id: UUID | None = None,
+        time_window: Literal["24h", "7d", "30d", "all"] = "all",
+    ) -> QAMetricsResponse:
         runs_query = db.query(AskRun)
+        start_at = resolve_time_window_start(time_window)
         if project_id is not None:
             runs_query = runs_query.filter(AskRun.project_id == project_id)
+        if start_at is not None:
+            runs_query = runs_query.filter(AskRun.created_at >= start_at)
 
         total_questions = runs_query.count()
         success_count = runs_query.filter(AskRun.status == AskRunStatus.success).count()
@@ -38,6 +48,8 @@ class MetricsService:
         feedback_query = db.query(AskRunFeedback).join(AskRun, AskRun.id == AskRunFeedback.ask_run_id)
         if project_id is not None:
             feedback_query = feedback_query.filter(AskRun.project_id == project_id)
+        if start_at is not None:
+            feedback_query = feedback_query.filter(AskRun.created_at >= start_at)
 
         positive_feedback_count = feedback_query.filter(AskRunFeedback.rating == FeedbackRating.positive).count()
         negative_feedback_count = feedback_query.filter(AskRunFeedback.rating == FeedbackRating.negative).count()

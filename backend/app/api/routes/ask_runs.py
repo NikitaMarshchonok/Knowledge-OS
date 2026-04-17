@@ -21,6 +21,7 @@ def list_ask_runs(
     status_filter: AskRunStatus | None = Query(default=None, alias="status"),
     error_reason: str | None = Query(default=None, min_length=1),
     sort: Literal["recent", "problematic"] = Query(default="recent"),
+    time_window: Literal["24h", "7d", "30d", "all"] = Query(default="all"),
     db: Session = Depends(get_db),
 ):
     total, items = service.list_ask_runs(
@@ -31,6 +32,7 @@ def list_ask_runs(
         status=status_filter,
         error_reason=error_reason,
         sort=sort,
+        time_window=time_window,
     )
     return AskRunListResponse(total=total, offset=offset, limit=limit, items=items)
 

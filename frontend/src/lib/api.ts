@@ -104,6 +104,7 @@ export const api = {
     status?: "success" | "failed" | "insufficient_evidence";
     error_reason?: string;
     sort?: "recent" | "problematic";
+    time_window?: "24h" | "7d" | "30d" | "all";
   }) => {
     const search = new URLSearchParams();
     if (params?.offset !== undefined) {
@@ -124,6 +125,9 @@ export const api = {
     if (params?.sort) {
       search.set("sort", params.sort);
     }
+    if (params?.time_window) {
+      search.set("time_window", params.time_window);
+    }
     const query = search.toString();
     return request<AskRunListResponse>(`/ask-runs${query ? `?${query}` : ""}`);
   },
@@ -136,8 +140,17 @@ export const api = {
       },
       body: JSON.stringify(payload)
     }),
-  getQAMetrics: (projectId?: string) =>
-    request<QAMetrics>(`/metrics/qa${projectId ? `?project_id=${encodeURIComponent(projectId)}` : ""}`),
+  getQAMetrics: (projectId?: string, timeWindow?: "24h" | "7d" | "30d" | "all") => {
+    const search = new URLSearchParams();
+    if (projectId) {
+      search.set("project_id", projectId);
+    }
+    if (timeWindow) {
+      search.set("time_window", timeWindow);
+    }
+    const query = search.toString();
+    return request<QAMetrics>(`/metrics/qa${query ? `?${query}` : ""}`);
+  },
   listDocumentChunks: (documentId: string, params?: { offset?: number; limit?: number }) => {
     const search = new URLSearchParams();
     if (params?.offset !== undefined) {

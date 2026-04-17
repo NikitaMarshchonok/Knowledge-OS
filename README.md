@@ -128,6 +128,7 @@ Response fields:
 - optional `status` (`success | failed | insufficient_evidence`)
 - optional `error_reason` (e.g. `no_results`, `not_enough_results`, `low_top_vector_score`, `provider_error`, `timeout`)
 - optional `sort` (`recent` default, `problematic` to prioritize failed/insufficient runs)
+- optional `time_window` (`all` default, `24h | 7d | 30d`)
 
 `GET /ask-runs/{id}` returns full ask run details including:
 
@@ -144,6 +145,11 @@ Response fields:
   "comment": "helpful and grounded"
 }
 ```
+
+`GET /metrics/qa` supports optional query params:
+
+- `project_id`
+- `time_window` (`all` default, `24h | 7d | 30d`)
 
 `GET /metrics/qa` returns:
 

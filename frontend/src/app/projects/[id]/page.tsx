@@ -93,6 +93,7 @@ export default function ProjectDetailsPage() {
   const [askRunStatusFilter, setAskRunStatusFilter] = useState<"all" | AskRunStatus>("all");
   const [askRunReasonFilter, setAskRunReasonFilter] = useState("all");
   const [askRunSort, setAskRunSort] = useState<"recent" | "problematic">("recent");
+  const [evaluationTimeWindow, setEvaluationTimeWindow] = useState<"24h" | "7d" | "30d" | "all">("all");
   const [isLoadingAskRuns, setIsLoadingAskRuns] = useState(false);
   const [selectedAskRun, setSelectedAskRun] = useState<AskRun | null>(null);
   const [isSubmittingFeedbackId, setIsSubmittingFeedbackId] = useState<string | null>(null);
@@ -137,12 +138,19 @@ export default function ProjectDetailsPage() {
   const loadEvaluation = useCallback(
     async (
       id: string,
-      options?: { limit?: number; status?: "all" | AskRunStatus; reason?: string; sort?: "recent" | "problematic" }
+      options?: {
+        limit?: number;
+        status?: "all" | AskRunStatus;
+        reason?: string;
+        sort?: "recent" | "problematic";
+        timeWindow?: "24h" | "7d" | "30d" | "all";
+      }
     ) => {
       const nextLimit = options?.limit ?? askRunsLimit;
       const nextStatus = options?.status ?? askRunStatusFilter;
       const nextReason = options?.reason ?? askRunReasonFilter;
       const nextSort = options?.sort ?? askRunSort;
+      const nextTimeWindow = options?.timeWindow ?? evaluationTimeWindow;
       try {
         setIsLoadingAskRuns(true);
         setEvaluationError(null);
@@ -152,9 +160,10 @@ export default function ProjectDetailsPage() {
             limit: nextLimit,
             status: nextStatus === "all" ? undefined : nextStatus,
             error_reason: nextReason === "all" ? undefined : nextReason,
-            sort: nextSort
+            sort: nextSort,
+            time_window: nextTimeWindow
           }),
-          api.getQAMetrics(id)
+          api.getQAMetrics(id, nextTimeWindow)
         ]);
         setAskRuns(runsResponse.items);
         setAskRunsTotal(runsResponse.total);
@@ -162,6 +171,7 @@ export default function ProjectDetailsPage() {
         setAskRunStatusFilter(nextStatus);
         setAskRunReasonFilter(nextReason);
         setAskRunSort(nextSort);
+        setEvaluationTimeWindow(nextTimeWindow);
         setQaMetrics(metricsResponse);
       } catch (err) {
         setEvaluationError(err instanceof ApiError ? err.message : "Failed to load evaluation data");
@@ -169,7 +179,7 @@ export default function ProjectDetailsPage() {
         setIsLoadingAskRuns(false);
       }
     },
-    [askRunReasonFilter, askRunSort, askRunStatusFilter, askRunsLimit]
+    [askRunReasonFilter, askRunSort, askRunStatusFilter, askRunsLimit, evaluationTimeWindow]
   );
 
   const openAskRunDetails = async (askRunId: string) => {
@@ -192,7 +202,8 @@ export default function ProjectDetailsPage() {
           limit: askRunsLimit,
           status: askRunStatusFilter,
           reason: askRunReasonFilter,
-          sort: askRunSort
+          sort: askRunSort,
+          timeWindow: evaluationTimeWindow
         });
       }
       if (selectedAskRun?.id === askRunId) {
@@ -318,7 +329,8 @@ export default function ProjectDetailsPage() {
         limit: askRunsLimit,
         status: askRunStatusFilter,
         reason: askRunReasonFilter,
-        sort: askRunSort
+        sort: askRunSort,
+        timeWindow: evaluationTimeWindow
       });
     } catch (err) {
       setAskError(err instanceof ApiError ? err.message : "Ask request failed");
@@ -383,7 +395,8 @@ export default function ProjectDetailsPage() {
                 limit: 10,
                 status: "all",
                 reason: "all",
-                sort: "problematic"
+                sort: "problematic",
+                timeWindow: evaluationTimeWindow
               })
             }
           >
@@ -400,7 +413,8 @@ export default function ProjectDetailsPage() {
                 limit: 10,
                 status: "failed",
                 reason: "all",
-                sort: "problematic"
+                sort: "problematic",
+                timeWindow: evaluationTimeWindow
               })
             }
           >
@@ -417,7 +431,8 @@ export default function ProjectDetailsPage() {
                 limit: 10,
                 status: "insufficient_evidence",
                 reason: "all",
-                sort: "problematic"
+                sort: "problematic",
+                timeWindow: evaluationTimeWindow
               })
             }
           >
@@ -647,6 +662,7 @@ export default function ProjectDetailsPage() {
             <p className="subtle">
               quality gate: {qualityGate?.label} | {qualityGate?.note}
             </p>
+            <p className="subtle">window: {evaluationTimeWindow}</p>
             <p className="subtle">
               total {qaMetrics.total_questions} | success {qaMetrics.success_count} | failed {qaMetrics.failed_count} |
               insufficient {qaMetrics.insufficient_evidence_count} | avg latency {qaMetrics.average_latency_ms.toFixed(0)}
@@ -681,7 +697,14 @@ export default function ProjectDetailsPage() {
             className="button-secondary"
             disabled={isLoadingAskRuns || !projectId || askRunStatusFilter === "all"}
             onClick={() =>
-              projectId && void loadEvaluation(projectId, { limit: 10, status: "all", reason: askRunReasonFilter, sort: askRunSort })
+              projectId &&
+              void loadEvaluation(projectId, {
+                limit: 10,
+                status: "all",
+                reason: askRunReasonFilter,
+                sort: askRunSort,
+                timeWindow: evaluationTimeWindow
+              })
             }
           >
             all
@@ -692,7 +715,13 @@ export default function ProjectDetailsPage() {
             disabled={isLoadingAskRuns || !projectId || askRunStatusFilter === "success"}
             onClick={() =>
               projectId &&
-              void loadEvaluation(projectId, { limit: 10, status: "success", reason: askRunReasonFilter, sort: askRunSort })
+              void loadEvaluation(projectId, {
+                limit: 10,
+                status: "success",
+                reason: askRunReasonFilter,
+                sort: askRunSort,
+                timeWindow: evaluationTimeWindow
+              })
             }
           >
             success
@@ -703,7 +732,13 @@ export default function ProjectDetailsPage() {
             disabled={isLoadingAskRuns || !projectId || askRunStatusFilter === "failed"}
             onClick={() =>
               projectId &&
-              void loadEvaluation(projectId, { limit: 10, status: "failed", reason: askRunReasonFilter, sort: askRunSort })
+              void loadEvaluation(projectId, {
+                limit: 10,
+                status: "failed",
+                reason: askRunReasonFilter,
+                sort: askRunSort,
+                timeWindow: evaluationTimeWindow
+              })
             }
           >
             failed
@@ -718,7 +753,8 @@ export default function ProjectDetailsPage() {
                 limit: 10,
                 status: "insufficient_evidence",
                 reason: askRunReasonFilter,
-                sort: askRunSort
+                sort: askRunSort,
+                timeWindow: evaluationTimeWindow
               })
             }
           >
@@ -733,7 +769,8 @@ export default function ProjectDetailsPage() {
                   limit: 10,
                   status: askRunStatusFilter,
                   reason: askRunReasonFilter,
-                  sort: nextSort
+                  sort: nextSort,
+                  timeWindow: evaluationTimeWindow
                 });
               }
             }}
@@ -741,6 +778,27 @@ export default function ProjectDetailsPage() {
           >
             <option value="recent">recent first</option>
             <option value="problematic">problematic first</option>
+          </select>
+          <select
+            value={evaluationTimeWindow}
+            onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+              const nextWindow = event.target.value as "24h" | "7d" | "30d" | "all";
+              if (projectId) {
+                void loadEvaluation(projectId, {
+                  limit: 10,
+                  status: askRunStatusFilter,
+                  reason: askRunReasonFilter,
+                  sort: askRunSort,
+                  timeWindow: nextWindow
+                });
+              }
+            }}
+            disabled={isLoadingAskRuns || !projectId}
+          >
+            <option value="all">all time</option>
+            <option value="24h">last 24h</option>
+            <option value="7d">last 7d</option>
+            <option value="30d">last 30d</option>
           </select>
           <select
             value={askRunReasonFilter}
@@ -751,7 +809,8 @@ export default function ProjectDetailsPage() {
                   limit: 10,
                   status: askRunStatusFilter,
                   reason: nextReason,
-                  sort: askRunSort
+                  sort: askRunSort,
+                  timeWindow: evaluationTimeWindow
                 });
               }
             }}
@@ -838,7 +897,8 @@ export default function ProjectDetailsPage() {
                   limit: askRunsLimit + 10,
                   status: askRunStatusFilter,
                   reason: askRunReasonFilter,
-                  sort: askRunSort
+                  sort: askRunSort,
+                  timeWindow: evaluationTimeWindow
                 })
               }
             >
