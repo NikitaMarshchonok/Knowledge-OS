@@ -361,6 +361,19 @@ export default function ProjectDetailsPage() {
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
+  const applyReasonFilter = (status: "failed" | "insufficient_evidence", reason: string) => {
+    if (!projectId) {
+      return;
+    }
+    void loadEvaluation(projectId, {
+      limit: 10,
+      status,
+      reason,
+      sort: "problematic",
+      timeWindow: evaluationTimeWindow
+    });
+  };
+
   const reasonOptions = qaMetrics
     ? Array.from(new Set([...Object.keys(qaMetrics.insufficient_evidence_reasons), ...Object.keys(qaMetrics.failure_reasons)]))
     : [];
@@ -690,17 +703,49 @@ export default function ProjectDetailsPage() {
             </p>
             <p className="subtle">
               insufficient breakdown:{" "}
-              {Object.entries(qaMetrics.insufficient_evidence_reasons)
-                .slice(0, 4)
-                .map(([reason, count]) => `${reason} (${count})`)
-                .join(" | ") || "n/a"}
+              {Object.keys(qaMetrics.insufficient_evidence_reasons).length === 0 ? (
+                "n/a"
+              ) : (
+                <>
+                  {Object.entries(qaMetrics.insufficient_evidence_reasons)
+                    .slice(0, 4)
+                    .map(([reason, count]) => (
+                      <button
+                        key={`insufficient-${reason}`}
+                        type="button"
+                        className="button-secondary button-small"
+                        style={{ marginRight: "0.5rem" }}
+                        onClick={() => applyReasonFilter("insufficient_evidence", reason)}
+                        disabled={isLoadingAskRuns || !projectId}
+                      >
+                        {reason} ({count})
+                      </button>
+                    ))}
+                </>
+              )}
             </p>
             <p className="subtle">
               failure breakdown:{" "}
-              {Object.entries(qaMetrics.failure_reasons)
-                .slice(0, 4)
-                .map(([reason, count]) => `${reason} (${count})`)
-                .join(" | ") || "n/a"}
+              {Object.keys(qaMetrics.failure_reasons).length === 0 ? (
+                "n/a"
+              ) : (
+                <>
+                  {Object.entries(qaMetrics.failure_reasons)
+                    .slice(0, 4)
+                    .map(([reason, count]) => (
+                      <button
+                        key={`failure-${reason}`}
+                        type="button"
+                        className="button-secondary button-small"
+                        style={{ marginRight: "0.5rem" }}
+                        onClick={() => applyReasonFilter("failed", reason)}
+                        disabled={isLoadingAskRuns || !projectId}
+                      >
+                        {reason} ({count})
+                      </button>
+                    ))}
+                </>
+              )}
             </p>
           </div>
         ) : null}
