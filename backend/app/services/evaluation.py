@@ -97,50 +97,14 @@ class EvaluationService:
         sort: Literal["recent", "problematic"] = "recent",
         time_window: Literal["24h", "7d", "30d", "all"] = "all",
     ) -> tuple[int, list[AskRun]]:
-        query = db.query(AskRun)
-        start_at = resolve_time_window_start(time_window)
-        if project_id is not None:
-            query = query.filter(AskRun.project_id == project_id)
-        if start_at is not None:
-            query = query.filter(AskRun.created_at >= start_at)
-        if status is not None:
-            query = query.filter(AskRun.status == status)
-        if error_reason:
-            normalized_reason = normalize_reason_token(error_reason)
-            query = query.filter(
-                AskRun.error_message.ilike(f"%:{normalized_reason}%")
-            )
-
-        if sort == "problematic":
-            status_priority = case(
-                (AskRun.status == AskRunStatus.failed, 0),
-                (AskRun.status == AskRunStatus.insufficient_evidence, 1),
-                else_=2,
-            )
-            reason_priority = case(
-                (
-                    or_(
-                        AskRun.error_message.ilike("%llm_error%"),
-                        AskRun.error_message.ilike("%provider_error%"),
-                        AskRun.error_message.ilike("%timeout%"),
-                        AskRun.error_message.ilike("%exception%"),
-                    ),
-                    0,
-                ),
-                (
-                    or_(
-                        AskRun.error_message.ilike("%insufficient%"),
-                        AskRun.error_message.ilike("%low_top_vector_score%"),
-                        AskRun.error_message.ilike("%low_top_rerank_score%"),
-                        AskRun.error_message.ilike("%not_enough_results%"),
-                    ),
-                    1,
-                ),
-                else_=2,
-            )
-            order_by = (status_priority.asc(), reason_priority.asc(), AskRun.created_at.desc())
-        else:
-            order_by = (AskRun.created_at.desc(),)
+        query = self._build_filtered_query(
+            db=db,
+            project_id=project_id,
+            status=status,
+            error_reason=error_reason,
+            time_window=time_window,
+        )
+        order_by = self._build_order_by(sort)
 
         total = query.count()
         items = (
@@ -151,6 +115,26 @@ class EvaluationService:
             .all()
         )
         return total, items
+
+    def list_ask_runs_for_export(
+        self,
+        db: Session,
+        *,
+        project_id: UUID | None = None,
+        status: AskRunStatus | None = None,
+        error_reason: str | None = None,
+        sort: Literal["recent", "problematic"] = "recent",
+        time_window: Literal["24h", "7d", "30d", "all"] = "all",
+    ) -> list[AskRun]:
+        query = self._build_filtered_query(
+            db=db,
+            project_id=project_id,
+            status=status,
+            error_reason=error_reason,
+            time_window=time_window,
+        )
+        order_by = self._build_order_by(sort)
+        return query.order_by(*order_by).all()
 
     def get_ask_run(self, db: Session, ask_run_id: UUID) -> AskRun:
         ask_run = (
@@ -186,3 +170,56 @@ class EvaluationService:
         db.commit()
         db.refresh(feedback)
         return feedback
+
+    def _build_filtered_query(
+        self,
+        *,
+        db: Session,
+        project_id: UUID | None,
+        status: AskRunStatus | None,
+        error_reason: str | None,
+        time_window: Literal["24h", "7d", "30d", "all"],
+    ):
+        query = db.query(AskRun)
+        start_at = resolve_time_window_start(time_window)
+        if project_id is not None:
+            query = query.filter(AskRun.project_id == project_id)
+        if start_at is not None:
+            query = query.filter(AskRun.created_at >= start_at)
+        if status is not None:
+            query = query.filter(AskRun.status == status)
+        if error_reason:
+            normalized_reason = normalize_reason_token(error_reason)
+            query = query.filter(AskRun.error_message.ilike(f"%:{normalized_reason}%"))
+        return query
+
+    def _build_order_by(self, sort: Literal["recent", "problematic"]):
+        if sort == "problematic":
+            status_priority = case(
+                (AskRun.status == AskRunStatus.failed, 0),
+                (AskRun.status == AskRunStatus.insufficient_evidence, 1),
+                else_=2,
+            )
+            reason_priority = case(
+                (
+                    or_(
+                        AskRun.error_message.ilike("%llm_error%"),
+                        AskRun.error_message.ilike("%provider_error%"),
+                        AskRun.error_message.ilike("%timeout%"),
+                        AskRun.error_message.ilike("%exception%"),
+                    ),
+                    0,
+                ),
+                (
+                    or_(
+                        AskRun.error_message.ilike("%insufficient%"),
+                        AskRun.error_message.ilike("%low_top_vector_score%"),
+                        AskRun.error_message.ilike("%low_top_rerank_score%"),
+                        AskRun.error_message.ilike("%not_enough_results%"),
+                    ),
+                    1,
+                ),
+                else_=2,
+            )
+            return (status_priority.asc(), reason_priority.asc(), AskRun.created_at.desc())
+        return (AskRun.created_at.desc(),)

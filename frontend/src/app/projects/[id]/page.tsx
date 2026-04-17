@@ -347,6 +347,20 @@ export default function ProjectDetailsPage() {
     }));
   };
 
+  const handleExportAskRunsCsv = () => {
+    if (!projectId) {
+      return;
+    }
+    const url = api.getAskRunsExportUrl({
+      project_id: projectId,
+      status: askRunStatusFilter === "all" ? undefined : askRunStatusFilter,
+      error_reason: askRunReasonFilter === "all" ? undefined : askRunReasonFilter,
+      sort: askRunSort,
+      time_window: evaluationTimeWindow
+    });
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   const reasonOptions = qaMetrics
     ? Array.from(new Set([...Object.keys(qaMetrics.insufficient_evidence_reasons), ...Object.keys(qaMetrics.failure_reasons)]))
     : [];
@@ -823,6 +837,14 @@ export default function ProjectDetailsPage() {
               </option>
             ))}
           </select>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={handleExportAskRunsCsv}
+            disabled={!projectId || isLoadingAskRuns}
+          >
+            export csv
+          </button>
           <span className="subtle">
             showing {askRuns.length} of {askRunsTotal}
           </span>

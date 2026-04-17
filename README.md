@@ -137,6 +137,14 @@ Response fields:
 - stored `citations[]`
 - optional `feedback`
 
+`GET /ask-runs/export` downloads CSV with current filters:
+
+- `project_id`
+- `status`
+- `error_reason`
+- `sort`
+- `time_window`
+
 `POST /ask-runs/{id}/feedback` request:
 
 ```json

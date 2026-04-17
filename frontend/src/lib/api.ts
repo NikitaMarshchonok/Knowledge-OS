@@ -131,6 +131,32 @@ export const api = {
     const query = search.toString();
     return request<AskRunListResponse>(`/ask-runs${query ? `?${query}` : ""}`);
   },
+  getAskRunsExportUrl: (params?: {
+    project_id?: string;
+    status?: "success" | "failed" | "insufficient_evidence";
+    error_reason?: string;
+    sort?: "recent" | "problematic";
+    time_window?: "24h" | "7d" | "30d" | "all";
+  }) => {
+    const search = new URLSearchParams();
+    if (params?.project_id) {
+      search.set("project_id", params.project_id);
+    }
+    if (params?.status) {
+      search.set("status", params.status);
+    }
+    if (params?.error_reason) {
+      search.set("error_reason", params.error_reason);
+    }
+    if (params?.sort) {
+      search.set("sort", params.sort);
+    }
+    if (params?.time_window) {
+      search.set("time_window", params.time_window);
+    }
+    const query = search.toString();
+    return `${API_BASE_URL}/ask-runs/export${query ? `?${query}` : ""}`;
+  },
   getAskRun: (askRunId: string) => request<AskRun>(`/ask-runs/${askRunId}`),
   submitAskRunFeedback: (askRunId: string, payload: { rating: "positive" | "negative"; comment?: string }) =>
     request(`/ask-runs/${askRunId}/feedback`, {
