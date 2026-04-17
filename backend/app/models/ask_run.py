@@ -6,6 +6,7 @@ from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.error_reason import extract_error_reason
 from app.db.base import Base
 
 
@@ -48,10 +49,4 @@ class AskRun(Base):
 
     @property
     def error_reason(self) -> str | None:
-        if not self.error_message:
-            return None
-        if ":" in self.error_message:
-            _, reason = self.error_message.split(":", 1)
-            cleaned = reason.strip()
-            return cleaned or None
-        return self.error_message.strip() or None
+        return extract_error_reason(self.error_message)

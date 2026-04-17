@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.error_reason import classify_failure_reason, format_error_message
 from app.models import AskRunStatus
 from app.schemas.ask import AskDebugInfo, AskRequest, AskResponse, Citation
 from app.schemas.search import SearchRequest, SearchResult
@@ -70,7 +71,11 @@ class AnswerGenerationService:
                 status=AskRunStatus.failed,
                 answer=None,
                 llm_model=None,
-                error_message=str(exc),
+                error_message=format_error_message(
+                    "failed",
+                    classify_failure_reason(str(exc)),
+                    detail=str(exc),
+                ),
                 started_at=started_at,
                 retrieved_chunk_ids=None,
                 reranked_chunk_ids=None,
@@ -90,7 +95,7 @@ class AnswerGenerationService:
                 status=AskRunStatus.insufficient_evidence,
                 answer=answer,
                 llm_model=None,
-                error_message="insufficient_evidence:no_results",
+                error_message=format_error_message("insufficient_evidence", "no_results"),
                 started_at=started_at,
                 retrieved_chunk_ids=retrieved_chunk_ids,
                 reranked_chunk_ids=reranked_chunk_ids,
@@ -126,7 +131,7 @@ class AnswerGenerationService:
                 status=AskRunStatus.insufficient_evidence,
                 answer=answer,
                 llm_model=None,
-                error_message=f"insufficient_evidence:{insufficient_reason}",
+                error_message=format_error_message("insufficient_evidence", insufficient_reason),
                 started_at=started_at,
                 retrieved_chunk_ids=retrieved_chunk_ids,
                 reranked_chunk_ids=reranked_chunk_ids,
@@ -157,13 +162,14 @@ class AnswerGenerationService:
                 temperature=self.settings.llm_temperature,
             )
         except Exception as exc:
+            failure_reason = classify_failure_reason(str(exc))
             self._finalize_run(
                 db=db,
                 ask_run_id=ask_run.id,
                 status=AskRunStatus.failed,
                 answer=None,
                 llm_model=llm.model_name,
-                error_message=f"Failed to generate answer: {exc}",
+                error_message=format_error_message("failed", failure_reason, detail=str(exc)),
                 started_at=started_at,
                 retrieved_chunk_ids=retrieved_chunk_ids,
                 reranked_chunk_ids=reranked_chunk_ids,
@@ -289,7 +295,7 @@ class AnswerGenerationService:
         top_rerank_score: float | None,
     ) -> str | None:
         if len(results) < self.settings.ask_min_results_for_answer:
-            return "too_few_results"
+            return "not_enough_results"
         if top_vector_score is None or top_vector_score < self.settings.ask_min_top_vector_score:
             return "low_top_vector_score"
         # If reranking is disabled or rerank score is missing, don't block on rerank threshold.

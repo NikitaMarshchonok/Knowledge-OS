@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.error_reason import extract_error_reason
 from app.models import AskRun, AskRunFeedback, AskRunStatus, FeedbackRating
 from app.schemas.metrics import QAMetricsResponse
 
@@ -51,7 +52,7 @@ class MetricsService:
         for run_status, error_message in reason_rows:
             if not error_message:
                 continue
-            reason = self._normalize_error_reason(error_message)
+            reason = extract_error_reason(error_message) or "unknown"
             if run_status == AskRunStatus.insufficient_evidence:
                 insufficient_counter[reason] += 1
             elif run_status == AskRunStatus.failed:
@@ -80,9 +81,3 @@ class MetricsService:
             top_failure_reason=top_failure_reason,
         )
 
-    def _normalize_error_reason(self, error_message: str) -> str:
-        if ":" not in error_message:
-            return error_message.strip()[:80]
-        _, reason = error_message.split(":", 1)
-        cleaned = reason.strip()
-        return cleaned[:80] if cleaned else "unknown"

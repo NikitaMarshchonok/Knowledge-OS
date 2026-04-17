@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import case, or_
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.error_reason import normalize_reason_token
 from app.models import AskRun, AskRunCitation, AskRunFeedback, AskRunStatus, FeedbackRating
 from app.schemas.ask import Citation
 
@@ -100,11 +101,9 @@ class EvaluationService:
         if status is not None:
             query = query.filter(AskRun.status == status)
         if error_reason:
+            normalized_reason = normalize_reason_token(error_reason)
             query = query.filter(
-                or_(
-                    AskRun.error_message.ilike(f"%:{error_reason}"),
-                    AskRun.error_message.ilike(f"{error_reason}%"),
-                )
+                AskRun.error_message.ilike(f"%:{normalized_reason}%")
             )
 
         if sort == "problematic":
