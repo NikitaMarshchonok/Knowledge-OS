@@ -62,6 +62,12 @@ class MetricsService:
         failure_reasons = dict(failure_counter.most_common())
         top_insufficient_evidence_reason = next(iter(insufficient_evidence_reasons), None)
         top_failure_reason = next(iter(failure_reasons), None)
+        quality_gate = self._build_quality_gate(
+            total_questions=total_questions,
+            failed_count=failed_count,
+            insufficient_evidence_count=insufficient_evidence_count,
+            feedback_rate=feedback_rate,
+        )
 
         return QAMetricsResponse(
             total_questions=total_questions,
@@ -79,5 +85,43 @@ class MetricsService:
             failure_reasons=failure_reasons,
             top_insufficient_evidence_reason=top_insufficient_evidence_reason,
             top_failure_reason=top_failure_reason,
+            quality_gate_level=quality_gate["level"],
+            quality_gate_label=quality_gate["label"],
+            quality_gate_note=quality_gate["note"],
         )
+
+    def _build_quality_gate(
+        self,
+        *,
+        total_questions: int,
+        failed_count: int,
+        insufficient_evidence_count: int,
+        feedback_rate: float,
+    ) -> dict[str, str]:
+        if total_questions < 5:
+            return {
+                "level": "warming_up",
+                "label": "Warming up",
+                "note": "Collect more asks for stable quality signal.",
+            }
+
+        fail_rate = failed_count / total_questions if total_questions > 0 else 0.0
+        insufficient_rate = insufficient_evidence_count / total_questions if total_questions > 0 else 0.0
+        if fail_rate >= 0.15 or insufficient_rate >= 0.35:
+            return {
+                "level": "critical",
+                "label": "Critical",
+                "note": "High failure/insufficient rate. Improve indexing coverage and retrieval quality.",
+            }
+        if fail_rate >= 0.08 or insufficient_rate >= 0.2 or feedback_rate < 0.2:
+            return {
+                "level": "warning",
+                "label": "Warning",
+                "note": "Quality is mixed. Review refusal reasons and collect more feedback.",
+            }
+        return {
+            "level": "good",
+            "label": "Good",
+            "note": "Quality is stable with acceptable failure/refusal behavior.",
+        }
 

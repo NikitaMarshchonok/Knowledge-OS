@@ -163,6 +163,9 @@ export interface QAMetrics {
   failure_reasons: Record<string, number>;
   top_insufficient_evidence_reason: string | null;
   top_failure_reason: string | null;
+  quality_gate_level: "warming_up" | "critical" | "warning" | "good";
+  quality_gate_label: string;
+  quality_gate_note: string;
 }
 
 export interface ProjectDetail extends Project {

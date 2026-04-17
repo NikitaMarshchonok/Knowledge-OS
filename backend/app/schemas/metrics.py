@@ -17,3 +17,6 @@ class QAMetricsResponse(BaseModel):
     failure_reasons: dict[str, int]
     top_insufficient_evidence_reason: str | None = None
     top_failure_reason: str | None = None
+    quality_gate_level: str
+    quality_gate_label: str
+    quality_gate_note: str

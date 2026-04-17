@@ -162,6 +162,9 @@ Response fields:
 - `failure_reasons`
 - `top_insufficient_evidence_reason`
 - `top_failure_reason`
+- `quality_gate_level`
+- `quality_gate_label`
+- `quality_gate_note`
 
 ## Retrieval + reranking pipeline
 
