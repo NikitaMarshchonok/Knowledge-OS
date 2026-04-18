@@ -93,6 +93,7 @@ class EvaluationService:
         limit: int,
         project_id: UUID | None = None,
         status: AskRunStatus | None = None,
+        error_category: Literal["failed", "insufficient_evidence"] | None = None,
         error_reason: str | None = None,
         sort: Literal["recent", "problematic"] = "recent",
         time_window: Literal["24h", "7d", "30d", "all"] = "all",
@@ -101,6 +102,7 @@ class EvaluationService:
             db=db,
             project_id=project_id,
             status=status,
+            error_category=error_category,
             error_reason=error_reason,
             time_window=time_window,
         )
@@ -122,6 +124,7 @@ class EvaluationService:
         *,
         project_id: UUID | None = None,
         status: AskRunStatus | None = None,
+        error_category: Literal["failed", "insufficient_evidence"] | None = None,
         error_reason: str | None = None,
         sort: Literal["recent", "problematic"] = "recent",
         time_window: Literal["24h", "7d", "30d", "all"] = "all",
@@ -130,6 +133,7 @@ class EvaluationService:
             db=db,
             project_id=project_id,
             status=status,
+            error_category=error_category,
             error_reason=error_reason,
             time_window=time_window,
         )
@@ -177,6 +181,7 @@ class EvaluationService:
         db: Session,
         project_id: UUID | None,
         status: AskRunStatus | None,
+        error_category: Literal["failed", "insufficient_evidence"] | None,
         error_reason: str | None,
         time_window: Literal["24h", "7d", "30d", "all"],
     ):
@@ -188,6 +193,8 @@ class EvaluationService:
             query = query.filter(AskRun.created_at >= start_at)
         if status is not None:
             query = query.filter(AskRun.status == status)
+        if error_category is not None:
+            query = query.filter(AskRun.error_message.ilike(f"{error_category}:%"))
         if error_reason:
             normalized_reason = normalize_reason_token(error_reason)
             query = query.filter(AskRun.error_message.ilike(f"%:{normalized_reason}%"))

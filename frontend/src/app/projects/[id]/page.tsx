@@ -91,6 +91,7 @@ export default function ProjectDetailsPage() {
   const [askRunsTotal, setAskRunsTotal] = useState(0);
   const [askRunsLimit, setAskRunsLimit] = useState(10);
   const [askRunStatusFilter, setAskRunStatusFilter] = useState<"all" | AskRunStatus>("all");
+  const [askRunCategoryFilter, setAskRunCategoryFilter] = useState<"all" | "failed" | "insufficient_evidence">("all");
   const [askRunReasonFilter, setAskRunReasonFilter] = useState("all");
   const [askRunSort, setAskRunSort] = useState<"recent" | "problematic">("recent");
   const [evaluationTimeWindow, setEvaluationTimeWindow] = useState<"24h" | "7d" | "30d" | "all">("all");
@@ -141,6 +142,7 @@ export default function ProjectDetailsPage() {
       options?: {
         limit?: number;
         status?: "all" | AskRunStatus;
+        category?: "all" | "failed" | "insufficient_evidence";
         reason?: string;
         sort?: "recent" | "problematic";
         timeWindow?: "24h" | "7d" | "30d" | "all";
@@ -148,6 +150,7 @@ export default function ProjectDetailsPage() {
     ) => {
       const nextLimit = options?.limit ?? askRunsLimit;
       const nextStatus = options?.status ?? askRunStatusFilter;
+      const nextCategory = options?.category ?? askRunCategoryFilter;
       const nextReason = options?.reason ?? askRunReasonFilter;
       const nextSort = options?.sort ?? askRunSort;
       const nextTimeWindow = options?.timeWindow ?? evaluationTimeWindow;
@@ -159,6 +162,7 @@ export default function ProjectDetailsPage() {
             project_id: id,
             limit: nextLimit,
             status: nextStatus === "all" ? undefined : nextStatus,
+            error_category: nextCategory === "all" ? undefined : nextCategory,
             error_reason: nextReason === "all" ? undefined : nextReason,
             sort: nextSort,
             time_window: nextTimeWindow
@@ -169,6 +173,7 @@ export default function ProjectDetailsPage() {
         setAskRunsTotal(runsResponse.total);
         setAskRunsLimit(nextLimit);
         setAskRunStatusFilter(nextStatus);
+        setAskRunCategoryFilter(nextCategory);
         setAskRunReasonFilter(nextReason);
         setAskRunSort(nextSort);
         setEvaluationTimeWindow(nextTimeWindow);
@@ -179,7 +184,7 @@ export default function ProjectDetailsPage() {
         setIsLoadingAskRuns(false);
       }
     },
-    [askRunReasonFilter, askRunSort, askRunStatusFilter, askRunsLimit, evaluationTimeWindow]
+    [askRunCategoryFilter, askRunReasonFilter, askRunSort, askRunStatusFilter, askRunsLimit, evaluationTimeWindow]
   );
 
   const openAskRunDetails = async (askRunId: string) => {
@@ -201,6 +206,7 @@ export default function ProjectDetailsPage() {
         await loadEvaluation(projectId, {
           limit: askRunsLimit,
           status: askRunStatusFilter,
+          category: askRunCategoryFilter,
           reason: askRunReasonFilter,
           sort: askRunSort,
           timeWindow: evaluationTimeWindow
@@ -328,6 +334,7 @@ export default function ProjectDetailsPage() {
       await loadEvaluation(projectId, {
         limit: askRunsLimit,
         status: askRunStatusFilter,
+        category: askRunCategoryFilter,
         reason: askRunReasonFilter,
         sort: askRunSort,
         timeWindow: evaluationTimeWindow
@@ -354,6 +361,7 @@ export default function ProjectDetailsPage() {
     const url = api.getAskRunsExportUrl({
       project_id: projectId,
       status: askRunStatusFilter === "all" ? undefined : askRunStatusFilter,
+      error_category: askRunCategoryFilter === "all" ? undefined : askRunCategoryFilter,
       error_reason: askRunReasonFilter === "all" ? undefined : askRunReasonFilter,
       sort: askRunSort,
       time_window: evaluationTimeWindow
@@ -368,6 +376,7 @@ export default function ProjectDetailsPage() {
     void loadEvaluation(projectId, {
       limit: 10,
       status,
+      category: status,
       reason,
       sort: "problematic",
       timeWindow: evaluationTimeWindow
@@ -421,6 +430,7 @@ export default function ProjectDetailsPage() {
               void loadEvaluation(projectId, {
                 limit: 10,
                 status: "all",
+                category: "all",
                 reason: "all",
                 sort: "problematic",
                 timeWindow: evaluationTimeWindow
@@ -439,6 +449,7 @@ export default function ProjectDetailsPage() {
               void loadEvaluation(projectId, {
                 limit: 10,
                 status: "failed",
+                category: "failed",
                 reason: "all",
                 sort: "problematic",
                 timeWindow: evaluationTimeWindow
@@ -457,6 +468,7 @@ export default function ProjectDetailsPage() {
               void loadEvaluation(projectId, {
                 limit: 10,
                 status: "insufficient_evidence",
+                category: "insufficient_evidence",
                 reason: "all",
                 sort: "problematic",
                 timeWindow: evaluationTimeWindow
@@ -760,6 +772,7 @@ export default function ProjectDetailsPage() {
               void loadEvaluation(projectId, {
                 limit: 10,
                 status: "all",
+                category: "all",
                 reason: askRunReasonFilter,
                 sort: askRunSort,
                 timeWindow: evaluationTimeWindow
@@ -777,6 +790,7 @@ export default function ProjectDetailsPage() {
               void loadEvaluation(projectId, {
                 limit: 10,
                 status: "success",
+                category: "all",
                 reason: askRunReasonFilter,
                 sort: askRunSort,
                 timeWindow: evaluationTimeWindow
@@ -794,6 +808,7 @@ export default function ProjectDetailsPage() {
               void loadEvaluation(projectId, {
                 limit: 10,
                 status: "failed",
+                category: askRunCategoryFilter,
                 reason: askRunReasonFilter,
                 sort: askRunSort,
                 timeWindow: evaluationTimeWindow
@@ -811,6 +826,7 @@ export default function ProjectDetailsPage() {
               void loadEvaluation(projectId, {
                 limit: 10,
                 status: "insufficient_evidence",
+                category: askRunCategoryFilter,
                 reason: askRunReasonFilter,
                 sort: askRunSort,
                 timeWindow: evaluationTimeWindow
@@ -827,6 +843,7 @@ export default function ProjectDetailsPage() {
                 void loadEvaluation(projectId, {
                   limit: 10,
                   status: askRunStatusFilter,
+                  category: askRunCategoryFilter,
                   reason: askRunReasonFilter,
                   sort: nextSort,
                   timeWindow: evaluationTimeWindow
@@ -860,6 +877,27 @@ export default function ProjectDetailsPage() {
             <option value="30d">last 30d</option>
           </select>
           <select
+            value={askRunCategoryFilter}
+            onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+              const nextCategory = event.target.value as "all" | "failed" | "insufficient_evidence";
+              if (projectId) {
+                void loadEvaluation(projectId, {
+                  limit: 10,
+                  status: askRunStatusFilter,
+                  category: nextCategory,
+                  reason: askRunReasonFilter,
+                  sort: askRunSort,
+                  timeWindow: evaluationTimeWindow
+                });
+              }
+            }}
+            disabled={isLoadingAskRuns || !projectId}
+          >
+            <option value="all">all categories</option>
+            <option value="failed">failed</option>
+            <option value="insufficient_evidence">insufficient_evidence</option>
+          </select>
+          <select
             value={askRunReasonFilter}
             onChange={(event: ChangeEvent<HTMLSelectElement>) => {
               const nextReason = event.target.value;
@@ -867,6 +905,7 @@ export default function ProjectDetailsPage() {
                 void loadEvaluation(projectId, {
                   limit: 10,
                   status: askRunStatusFilter,
+                  category: askRunCategoryFilter,
                   reason: nextReason,
                   sort: askRunSort,
                   timeWindow: evaluationTimeWindow
@@ -918,6 +957,7 @@ export default function ProjectDetailsPage() {
                     <span className={`reason-chip reason-chip-${getAskRunReasonTone(run.error_reason)}`}>
                       {run.error_reason}
                     </span>
+                    {run.error_category ? ` (${run.error_category})` : ""}
                   </p>
                 ) : null}
                 <p className="search-content">{(run.answer || run.error_message || "").slice(0, 220)}</p>
@@ -963,6 +1003,7 @@ export default function ProjectDetailsPage() {
                 void loadEvaluation(projectId, {
                   limit: askRunsLimit + 10,
                   status: askRunStatusFilter,
+                  category: askRunCategoryFilter,
                   reason: askRunReasonFilter,
                   sort: askRunSort,
                   timeWindow: evaluationTimeWindow

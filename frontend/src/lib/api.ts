@@ -102,6 +102,7 @@ export const api = {
     limit?: number;
     project_id?: string;
     status?: "success" | "failed" | "insufficient_evidence";
+    error_category?: "failed" | "insufficient_evidence";
     error_reason?: string;
     sort?: "recent" | "problematic";
     time_window?: "24h" | "7d" | "30d" | "all";
@@ -119,6 +120,9 @@ export const api = {
     if (params?.status) {
       search.set("status", params.status);
     }
+    if (params?.error_category) {
+      search.set("error_category", params.error_category);
+    }
     if (params?.error_reason) {
       search.set("error_reason", params.error_reason);
     }
@@ -134,6 +138,7 @@ export const api = {
   getAskRunsExportUrl: (params?: {
     project_id?: string;
     status?: "success" | "failed" | "insufficient_evidence";
+    error_category?: "failed" | "insufficient_evidence";
     error_reason?: string;
     sort?: "recent" | "problematic";
     time_window?: "24h" | "7d" | "30d" | "all";
@@ -144,6 +149,9 @@ export const api = {
     }
     if (params?.status) {
       search.set("status", params.status);
+    }
+    if (params?.error_category) {
+      search.set("error_category", params.error_category);
     }
     if (params?.error_reason) {
       search.set("error_reason", params.error_reason);

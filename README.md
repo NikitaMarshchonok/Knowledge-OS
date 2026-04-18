@@ -126,6 +126,7 @@ Response fields:
 - `limit` (default 20, max 100)
 - optional `project_id`
 - optional `status` (`success | failed | insufficient_evidence`)
+- optional `error_category` (`failed | insufficient_evidence`)
 - optional `error_reason` (e.g. `no_results`, `not_enough_results`, `low_top_vector_score`, `provider_error`, `timeout`)
 - optional `sort` (`recent` default, `problematic` to prioritize failed/insufficient runs)
 - optional `time_window` (`all` default, `24h | 7d | 30d`)
@@ -133,7 +134,7 @@ Response fields:
 `GET /ask-runs/{id}` returns full ask run details including:
 
 - debug trace fields (`retrieved_chunk_ids`, `reranked_chunk_ids`, `cited_chunk_ids`)
-- normalized `error_reason` (derived from `error_message` for easier filtering/triage)
+- normalized `error_category` and `error_reason` (derived from `error_message` for easier filtering/triage)
 - stored `citations[]`
 - optional `feedback`
 
@@ -141,6 +142,7 @@ Response fields:
 
 - `project_id`
 - `status`
+- `error_category`
 - `error_reason`
 - `sort`
 - `time_window`

@@ -44,6 +44,7 @@ class AskRunRead(BaseModel):
     latency_ms: int | None
     top_k: int
     error_message: str | None
+    error_category: str | None = None
     error_reason: str | None = None
     retrieved_chunk_ids: list[str] | None
     reranked_chunk_ids: list[str] | None

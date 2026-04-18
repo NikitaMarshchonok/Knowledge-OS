@@ -53,3 +53,16 @@ def extract_error_reason(error_message: str | None) -> str | None:
     if match:
         return normalize_reason_token(match.group(1))
     return "unknown"
+
+
+def extract_error_category(error_message: str | None) -> str | None:
+    if not error_message:
+        return None
+    cleaned = error_message.strip()
+    if not cleaned:
+        return None
+    if ":" not in cleaned:
+        return "failed"
+    category, _ = cleaned.split(":", 1)
+    normalized = normalize_reason_token(category)
+    return normalized or None
