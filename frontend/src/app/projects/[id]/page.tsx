@@ -68,6 +68,31 @@ function getAskRunReasonTone(reason: string): "critical" | "warning" | "neutral"
   return "neutral";
 }
 
+function getReasonEntries(
+  metrics: QAMetrics,
+  statusFilter: "all" | AskRunStatus,
+  categoryFilter: "all" | "failed" | "insufficient_evidence"
+): Array<[string, number]> {
+  if (statusFilter === "success") {
+    return [];
+  }
+  if (statusFilter === "failed" || categoryFilter === "failed") {
+    return Object.entries(metrics.failure_reasons);
+  }
+  if (statusFilter === "insufficient_evidence" || categoryFilter === "insufficient_evidence") {
+    return Object.entries(metrics.insufficient_evidence_reasons);
+  }
+
+  const merged = new Map<string, number>();
+  for (const [reason, count] of Object.entries(metrics.failure_reasons)) {
+    merged.set(reason, (merged.get(reason) || 0) + count);
+  }
+  for (const [reason, count] of Object.entries(metrics.insufficient_evidence_reasons)) {
+    merged.set(reason, (merged.get(reason) || 0) + count);
+  }
+  return Array.from(merged.entries()).sort((a, b) => b[1] - a[1]);
+}
+
 export default function ProjectDetailsPage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id;
@@ -383,9 +408,8 @@ export default function ProjectDetailsPage() {
     });
   };
 
-  const reasonOptions = qaMetrics
-    ? Array.from(new Set([...Object.keys(qaMetrics.insufficient_evidence_reasons), ...Object.keys(qaMetrics.failure_reasons)]))
-    : [];
+  const reasonEntries = qaMetrics ? getReasonEntries(qaMetrics, askRunStatusFilter, askRunCategoryFilter) : [];
+  const reasonOptions = reasonEntries.map(([reason]) => reason);
   const problematicCount = qaMetrics ? qaMetrics.failed_count + qaMetrics.insufficient_evidence_count : 0;
   const isProblematicPresetActive =
     askRunSort === "problematic" && askRunStatusFilter === "all" && askRunReasonFilter === "all";
@@ -395,6 +419,32 @@ export default function ProjectDetailsPage() {
     askRunSort === "problematic" &&
     askRunStatusFilter === "insufficient_evidence" &&
     askRunReasonFilter === "all";
+
+  useEffect(() => {
+    if (!projectId || askRunReasonFilter === "all") {
+      return;
+    }
+    if (reasonOptions.includes(askRunReasonFilter)) {
+      return;
+    }
+    void loadEvaluation(projectId, {
+      limit: 10,
+      status: askRunStatusFilter,
+      category: askRunCategoryFilter,
+      reason: "all",
+      sort: askRunSort,
+      timeWindow: evaluationTimeWindow
+    });
+  }, [
+    askRunCategoryFilter,
+    askRunReasonFilter,
+    askRunSort,
+    askRunStatusFilter,
+    evaluationTimeWindow,
+    loadEvaluation,
+    projectId,
+    reasonOptions
+  ]);
 
   return (
     <main className="page">
@@ -808,7 +858,7 @@ export default function ProjectDetailsPage() {
               void loadEvaluation(projectId, {
                 limit: 10,
                 status: "failed",
-                category: askRunCategoryFilter,
+                category: "failed",
                 reason: askRunReasonFilter,
                 sort: askRunSort,
                 timeWindow: evaluationTimeWindow
@@ -826,7 +876,7 @@ export default function ProjectDetailsPage() {
               void loadEvaluation(projectId, {
                 limit: 10,
                 status: "insufficient_evidence",
-                category: askRunCategoryFilter,
+                category: "insufficient_evidence",
                 reason: askRunReasonFilter,
                 sort: askRunSort,
                 timeWindow: evaluationTimeWindow
@@ -863,6 +913,7 @@ export default function ProjectDetailsPage() {
                 void loadEvaluation(projectId, {
                   limit: 10,
                   status: askRunStatusFilter,
+                  category: askRunCategoryFilter,
                   reason: askRunReasonFilter,
                   sort: askRunSort,
                   timeWindow: nextWindow
@@ -915,9 +966,9 @@ export default function ProjectDetailsPage() {
             disabled={isLoadingAskRuns || !projectId}
           >
             <option value="all">all reasons</option>
-            {reasonOptions.map((reason) => (
+            {reasonEntries.map(([reason, count]) => (
               <option key={reason} value={reason}>
-                {reason}
+                {reason} ({count})
               </option>
             ))}
           </select>
